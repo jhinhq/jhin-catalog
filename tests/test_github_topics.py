@@ -220,10 +220,16 @@ async def test_a_token_is_sent_when_the_limits_carry_one(
     assert all("ghp_example" in header for header in seen)
 
 
-async def test_a_persistent_403_backs_off_three_times_and_then_gives_up(
+async def test_a_persistent_403_cuts_the_topic_short_rather_than_the_crawl(
     mock_client: ClientFactory, no_sleep: RecordingSleep
 ) -> None:
-    """403 is GitHub's secondary rate limit, and it is not in ``RETRY_STATUSES``."""
+    """A secondary rate limit ends the topic, not the build.
+
+    Aborting here would discard every other source's work over one
+    paginated page. The diff gate is what guards a truncated catalog, so
+    this degrades the way npm and smithery already do: return what was
+    reached and let the gate decide whether it is publishable.
+    """
     calls = 0
 
     def handler(_request: httpx.Request) -> httpx.Response:
@@ -232,11 +238,33 @@ async def test_a_persistent_403_backs_off_three_times_and_then_gives_up(
         return httpx.Response(403, json={"message": "API rate limit exceeded"})
 
     async with mock_client(handler) as client:
-        with pytest.raises(SourceError):
-            await GitHubTopicsSource().fetch(client, limits=DEFAULT_LIMITS, sleep=no_sleep)
+        fetched = await GitHubTopicsSource().fetch(client, limits=DEFAULT_LIMITS, sleep=no_sleep)
 
-    assert calls == 3
-    assert no_sleep.delays == [0.5, 1.0]
+    assert fetched.records == ()
+    # Five attempts per topic across every topic in TOPICS.
+    assert calls == 5 * len(TOPICS)
+    assert no_sleep.delays[:4] == [0.5, 1.0, 2.0, 4.0]
+
+
+async def test_a_403_waits_the_retry_after_github_asked_for(
+    mock_client: ClientFactory, no_sleep: RecordingSleep
+) -> None:
+    """``Retry-After`` beats the doubling schedule, capped at 60s."""
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(
+            403,
+            json={"message": "API rate limit exceeded"},
+            headers={"Retry-After": "45"},
+        )
+
+    async with mock_client(handler) as client:
+        await GitHubTopicsSource().fetch(client, limits=DEFAULT_LIMITS, sleep=no_sleep)
+
+    assert no_sleep.delays[:4] == [45.0, 45.0, 45.0, 45.0]
 
 
 async def test_a_403_that_clears_is_retried_rather_than_fatal(

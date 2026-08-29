@@ -34,12 +34,26 @@ RETRY_AFTER_CAP_SECONDS: Final[float] = 60.0
 
 
 class FetchError(CatalogError):
-    """A display-safe fetch failure carrying the status and the URL."""
+    """A display-safe fetch failure carrying the status and the URL.
 
-    def __init__(self, message: str, *, url: str, status_code: int | None = None) -> None:
+    ``retry_after`` is the upstream's own ``Retry-After``, in seconds, when
+    it sent one. A status outside ``RETRY_STATUSES`` is not retried here, so
+    a caller that wants to be patient with it — a ``403`` secondary rate
+    limit, say — needs the header this far out to honour it.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        url: str,
+        status_code: int | None = None,
+        retry_after: float | None = None,
+    ) -> None:
         super().__init__(message)
         self.url = url
         self.status_code = status_code
+        self.retry_after = retry_after
 
 
 class ResponseTooLarge(FetchError):
@@ -207,7 +221,12 @@ async def _attempt_once(
             error = FetchError(f"Upstream returned {status}", url=safe_url, status_code=status)
             raise _Retry(delay=delay, error=error)
         if not 200 <= status < 300:
-            raise FetchError(f"Upstream returned {status}", url=safe_url, status_code=status)
+            raise FetchError(
+                f"Upstream returned {status}",
+                url=safe_url,
+                status_code=status,
+                retry_after=_retry_after_seconds(response),
+            )
         try:
             body = await _read_bounded(
                 response, safe_url=safe_url, max_response_bytes=max_response_bytes

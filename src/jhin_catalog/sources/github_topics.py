@@ -8,9 +8,11 @@ notes the lowest star count it saw, and re-asks the same topic with a
 ``stars:`` upper bound at that mark, so each window covers the next slice
 down. Windows are bounded and every genuinely unreachable remainder is
 logged. Requests pass through a ``TokenBucket`` at the documented search
-rate and a ``403`` is retried three times with the shared backoff;
-``GET /rate_limit`` is never consulted, because it reports a stale
-``remaining`` and scheduling against it is how a crawl earns a ban.
+rate and a ``403`` — GitHub's secondary rate limit — is waited out on its
+own ``Retry-After``; a topic that stays refused is cut short and reported
+rather than failing the crawl. ``GET /rate_limit`` is never consulted,
+because it reports a stale ``remaining`` and scheduling against it is how
+a crawl earns a ban.
 """
 
 from __future__ import annotations
@@ -53,10 +55,27 @@ _API_VERSION: Final[str] = "2022-11-28"
 
 # A refused search is not in ``RETRY_STATUSES`` — a 403 is how GitHub says
 # "secondary rate limit", not "forbidden" — so this source spends its own
-# rounds on it before calling the crawl a fetch fault.
+# rounds on it, honouring the ``Retry-After`` GitHub sends with it. Five
+# attempts on the doubling schedule is ~7s of its own patience, and far more
+# when the header asks for longer, which on a secondary limit it usually
+# does.
 _FORBIDDEN_STATUS: Final[int] = 403
-_FORBIDDEN_ATTEMPTS: Final[int] = 3
+_FORBIDDEN_ATTEMPTS: Final[int] = 5
 _UNPROCESSABLE_STATUS: Final[int] = 422
+
+
+class _RateLimited(Exception):
+    """Internal signal: GitHub kept refusing this page, so stop this topic.
+
+    Deliberately not a ``SourceError``. A secondary rate limit is the
+    expected end of a large crawl rather than a broken upstream, and the
+    other sources already treat their own ceilings that way — npm reports
+    what it skipped past ``from=5000``, smithery reports the details it
+    could not reach. Aborting the whole build here would throw away every
+    other source's work over one paginated page, and the diff gate is what
+    actually guards against publishing a truncated catalog.
+    """
+
 
 # How many ``stars:`` windows one topic may be split into. Five topics at
 # ten pages of a hundred is 5,000 repositories per window pass; twelve
@@ -188,17 +207,27 @@ class GitHubTopicsSource(Source):
                     spent = True
                     break
 
-                result = await self._crawl_query(
-                    client,
-                    query=query,
-                    topic=topic,
-                    per_page=per_page,
-                    page_budget=limits.max_pages - page_count,
-                    headers=headers,
-                    bucket=bucket,
-                    sleep=sleep,
-                    digest=digest,
-                )
+                try:
+                    result = await self._crawl_query(
+                        client,
+                        query=query,
+                        topic=topic,
+                        per_page=per_page,
+                        page_budget=limits.max_pages - page_count,
+                        headers=headers,
+                        bucket=bucket,
+                        sleep=sleep,
+                        digest=digest,
+                    )
+                except _RateLimited as exc:
+                    _LOG.warning(
+                        "github_topics: topic %r hit the search rate limit below stars<=%s "
+                        "and was cut short (%s); the tail was skipped",
+                        topic,
+                        previous_min,
+                        exc,
+                    )
+                    break
                 page_count += result.pages
                 added = 0
                 for record in result.records:
@@ -332,9 +361,12 @@ class GitHubTopicsSource(Source):
         """One search page, patient with a 403 and fatal on a 422.
 
         A 403 is the secondary rate limit rather than a refusal, so it is
-        slept off on the shared backoff schedule up to ``_FORBIDDEN_ATTEMPTS``
-        tries. A 422 means the query itself is unacceptable — past the result
-        ceiling, or malformed — and no amount of waiting changes that.
+        slept off up to ``_FORBIDDEN_ATTEMPTS`` tries, waiting whatever
+        ``Retry-After`` asked for when GitHub sent one and the doubling
+        schedule otherwise. Outliving that raises ``_RateLimited``, which
+        ends this topic rather than the crawl. A 422 means the query itself
+        is unacceptable — past the result ceiling, or malformed — and no
+        amount of waiting changes that.
         """
         attempt = 1
         while True:
@@ -344,14 +376,13 @@ class GitHubTopicsSource(Source):
                 )
             except FetchError as exc:
                 if exc.status_code == _FORBIDDEN_STATUS and attempt < _FORBIDDEN_ATTEMPTS:
-                    await sleep(backoff_delay(attempt))
+                    await sleep(backoff_delay(attempt, retry_after=exc.retry_after))
                     attempt += 1
                     continue
                 if exc.status_code == _FORBIDDEN_STATUS:
-                    raise SourceError(
+                    raise _RateLimited(
                         f"github search for {topic!r} page {page} was refused "
-                        f"{_FORBIDDEN_ATTEMPTS} times: {exc}",
-                        source_id=_SOURCE_ID,
+                        f"{_FORBIDDEN_ATTEMPTS} times: {exc}"
                     ) from exc
                 if exc.status_code == _UNPROCESSABLE_STATUS:
                     raise SourceError(
