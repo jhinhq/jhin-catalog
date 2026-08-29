@@ -176,7 +176,7 @@
           "default": null,
           "description": "A concrete https endpoint: no template placeholder, no fragment, no userinfo. ``null`` when the record names no endpoint a person could dial.",
           "maxLength": 512,
-          "pattern": "^https://[^\\s@{}#]+$"
+          "pattern": "^https://[^\\s@/{}#]+(/[^\\s{}#]*)?$"
         },
         "name": {
           "maxLength": 120,

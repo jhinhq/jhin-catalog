@@ -219,8 +219,13 @@ _CONNECTOR_TYPE_SCHEMA: Final[dict[str, Any]] = {
     "enum": [*sorted(CONNECTOR_TYPES), None],
     "description": "The native Jhin connector this server maps to, when one exists.",
 }
+# ``@`` is banned in the authority (userinfo) but legal in the path —
+# every Smithery-namespaced registry entry serves from
+# ``server.smithery.ai/@owner/name/mcp``, and the blanket ban failed CI on
+# the first full crawl (25k registry entries surfaced the shape; the small
+# baseline never had).
 _MCP_URL_SCHEMA: Final[dict[str, Any]] = {
-    "pattern": r"^https://[^\s@{}#]+$",
+    "pattern": r"^https://[^\s@/{}#]+(/[^\s{}#]*)?$",
     "maxLength": MAX_URL_CHARS,
     "description": (
         "A concrete https endpoint: no template placeholder, no fragment, no userinfo. "
