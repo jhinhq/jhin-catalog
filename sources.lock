@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "entry_count": 250,
+      "fetched_at": "2026-08-28T00:00:00Z",
+      "page_count": 3,
+      "sha256": "bf67fa19255f92f32c83abba1a0f2291946bb67e76246be8998f21e02307c978",
+      "source_id": "github_topics",
+      "url": "https://api.github.com/search/repositories"
+    },
+    {
+      "entry_count": 250,
+      "fetched_at": "2026-08-28T00:00:00Z",
+      "page_count": 278,
+      "sha256": "cb60abb299770537cbf2289c2bb6ce6b6a8d14f991b460138cecea8f1a25b17e",
+      "source_id": "marketplaces",
+      "url": "https://raw.githubusercontent.com/anthropics/claude-plugins-official/HEAD/.claude-plugin/marketplace.json"
+    },
+    {
+      "entry_count": 250,
+      "fetched_at": "2026-08-28T00:00:00Z",
+      "page_count": 3,
+      "sha256": "9d065adc59a5408d82ab4ae64cd9e4f41c9ab41b7eea5cf33be28dd82b3df324",
+      "source_id": "npm",
+      "url": "https://registry.npmjs.org/-/v1/search"
+    },
+    {
+      "entry_count": 250,
+      "fetched_at": "2026-08-28T00:00:00Z",
+      "page_count": 3,
+      "sha256": "7c1f111f5b54283be87939855aba1f93a16cca8b3e35b057a89760aafa4f0e27",
+      "source_id": "registry",
+      "url": "https://registry.modelcontextprotocol.io/v0.1/servers"
+    },
+    {
+      "entry_count": 250,
+      "fetched_at": "2026-08-28T00:00:00Z",
+      "page_count": 153,
+      "sha256": "91ce3bb76954d81051a957d065d2dd25246a1b8f73cff78579bf08fb6d2aa04b",
+      "source_id": "smithery",
+      "url": "https://registry.smithery.ai/servers"
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "servers": [
+    {
+      "server": {
+        "name": "io.github.tavily-ai/tavily-mcp",
+        "title": "Tavily MCP",
+        "description": "Search, extract, and crawl the web.",
+        "version": "0.2.9",
+        "websiteUrl": "https://docs.tavily.com/documentation/mcp",
+        "repository": {"url": "https://github.com/tavily-ai/tavily-mcp", "source": "github"},
+        "remotes": [
+          {
+            "type": "streamable-http",
+            "url": "https://mcp.tavily.com/mcp/",
+            "headers": [{"name": "Authorization", "description": "Bearer <api key>", "isSecret": true}]
+          }
+        ],
+        "packages": [
+          {
+            "registryType": "npm",
+            "identifier": "tavily-mcp",
+            "version": "0.2.9",
+            "runtimeHint": "npx",
+            "transport": {"type": "stdio"}
+          }
+        ]
+      },
+      "_meta": {
+        "io.modelcontextprotocol.registry/official": {
+          "status": "active",
+          "isLatest": true,
+          "serverId": "11111111-1111-4111-8111-111111111111"
+        },
+        "io.modelcontextprotocol.registry/publisher-provided": {"tags": ["search", "web"]}
+      }
+    },
+    {
+      "server": {
+        "name": "io.github.modelcontextprotocol/server-filesystem",
+        "description": "Read and write files in allowed directories.",
+        "version": "2026.8.1",
+        "repository": {"url": "https://github.com/modelcontextprotocol/servers", "source": "github"},
+        "packages": [
+          {
+            "registryType": "npm",
+            "identifier": "@modelcontextprotocol/server-filesystem",
+            "version": "2026.8.1",
+            "transport": {"type": "stdio"}
+          }
+        ]
+      },
+      "_meta": {
+        "io.modelcontextprotocol.registry/official": {
+          "status": "active",
+          "isLatest": true,
+          "serverId": "22222222-2222-4222-8222-222222222222"
+        }
+      }
+    },
+    {
+      "server": {
+        "name": "io.github.example-org/odd-transport",
+        "title": "Odd Transport",
+        "description": "A server that advertises a transport nobody has defined.",
+        "version": "0.1.0",
+        "remotes": [
+          {"type": "carrier-pigeon", "url": "https://odd.example/mcp"},
+          {"type": "sse", "url": "https://odd.example/sse"}
+        ]
+      },
+      "_meta": {
+        "io.modelcontextprotocol.registry/official": {
+          "status": "active",
+          "isLatest": true,
+          "serverId": "33333333-3333-4333-8333-333333333333"
+        }
+      }
+    },
+    {
+      "server": {
+        "name": "io.github.example-org/bare",
+        "description": "Neither remotes nor packages, and still a real row.",
+        "version": "1.0.0"
+      },
+      "_meta": {
+        "io.modelcontextprotocol.registry/official": {
+          "status": "active",
+          "isLatest": true,
+          "serverId": "44444444-4444-4444-8444-444444444444"
+        }
+      }
+    }
+  ],
+  "metadata": {"nextCursor": "eyJvIjo0fQ", "count": 4}
+}

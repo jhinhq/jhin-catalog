@@ -1,0 +1,839 @@
+{
+  "$defs": {
+    "McpEntry": {
+      "additionalProperties": false,
+      "description": "One MCP server: how to reach it, who vouches for it, how popular it is.",
+      "properties": {
+        "alias_keys": {
+          "default": [],
+          "description": "Other keys that resolve to this record, sorted and deduplicated.",
+          "items": {
+            "pattern": "^(mcp|skill):[a-z0-9]+:[\\x21-\\x7e]{1,220}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "auth_hint": {
+          "default": "bearer",
+          "enum": [
+            "none",
+            "bearer",
+            "header",
+            "oauth"
+          ],
+          "type": "string"
+        },
+        "auth_note": {
+          "default": "",
+          "maxLength": 500,
+          "type": "string"
+        },
+        "canonical_key": {
+          "description": "``<kind>:<space>:<identity>``, the stable identity of one record.",
+          "pattern": "^(mcp|skill):[a-z0-9]+:[\\x21-\\x7e]{1,220}$",
+          "type": "string"
+        },
+        "category": {
+          "description": "One of Jhin's twelve Apps-library categories.",
+          "enum": [
+            "Developer tools",
+            "Project management",
+            "Communication",
+            "Documents & knowledge",
+            "Payments & commerce",
+            "CRM & support",
+            "Design",
+            "Search & web",
+            "Data & infrastructure",
+            "Automation",
+            "Productivity",
+            "Storage"
+          ],
+          "type": "string"
+        },
+        "connector_config": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "connector_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The native Jhin connector this server maps to, when one exists.",
+          "enum": [
+            "cli",
+            "example",
+            "github",
+            "http",
+            "linear",
+            "mcp",
+            "supabase",
+            "vercel",
+            "web",
+            null
+          ]
+        },
+        "curated_fields": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "deprecated": {
+          "default": false,
+          "type": "boolean"
+        },
+        "description": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "docs_url": {
+          "default": "",
+          "type": "string"
+        },
+        "homepage": {
+          "default": "",
+          "type": "string"
+        },
+        "icon": {
+          "description": "One of the icon tokens Jhin's Apps library can render.",
+          "enum": [
+            "book-open",
+            "bug",
+            "calendar",
+            "check-square",
+            "cloud",
+            "cpu",
+            "credit-card",
+            "database",
+            "flame",
+            "flask",
+            "folder",
+            "github",
+            "globe",
+            "hard-drive",
+            "kanban",
+            "life-buoy",
+            "linear",
+            "mail",
+            "mcp",
+            "message-circle",
+            "message-square",
+            "notebook",
+            "palette",
+            "pen-tool",
+            "phone",
+            "search",
+            "send",
+            "table",
+            "terminal",
+            "users",
+            "vercel",
+            "web",
+            "zap"
+          ],
+          "type": "string"
+        },
+        "kind": {
+          "const": "mcp",
+          "type": "string"
+        },
+        "license": {
+          "default": "",
+          "maxLength": 64,
+          "type": "string"
+        },
+        "mcp_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A concrete https endpoint: no template placeholder, no fragment, no userinfo. ``null`` when the record names no endpoint a person could dial.",
+          "maxLength": 512,
+          "pattern": "^https://[^\\s@{}#]+$"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "npm_package": {
+          "default": "",
+          "maxLength": 214,
+          "type": "string"
+        },
+        "packages": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PackageRef"
+          },
+          "type": "array"
+        },
+        "popularity": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "popularity_signals": {
+          "$ref": "#/$defs/PopularitySignals",
+          "default": {
+            "github_forks": null,
+            "github_stars": null,
+            "npm_dependents": null,
+            "npm_downloads_monthly": null,
+            "registry_version_count": null,
+            "smithery_use_count": null
+          }
+        },
+        "registry_name": {
+          "default": "",
+          "maxLength": 132,
+          "type": "string"
+        },
+        "remotes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RemoteRef"
+          },
+          "type": "array"
+        },
+        "repo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepoRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "setup_note": {
+          "default": "",
+          "maxLength": 500,
+          "type": "string"
+        },
+        "slug": {
+          "description": "The name Jhin's UI and its stored connections resolve by.",
+          "pattern": "^[a-z0-9_]{1,32}$",
+          "type": "string"
+        },
+        "smithery_qualified_name": {
+          "default": "",
+          "maxLength": 200,
+          "type": "string"
+        },
+        "sources": {
+          "description": "Every upstream that contributed to this record, strongest first.",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array"
+        },
+        "stdio_only": {
+          "default": false,
+          "type": "boolean"
+        },
+        "tags": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tool_count": {
+          "anyOf": [
+            {
+              "maximum": 200,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "transport": {
+          "default": "unknown",
+          "enum": [
+            "streamable_http",
+            "sse",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "trust_tier": {
+          "enum": [
+            "curated",
+            "registry_verified",
+            "smithery_verified",
+            "indexed"
+          ],
+          "type": "string"
+        },
+        "url_unverified": {
+          "default": false,
+          "type": "boolean"
+        },
+        "verified_upstream": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "alias_keys",
+        "auth_hint",
+        "auth_note",
+        "canonical_key",
+        "category",
+        "connector_config",
+        "connector_type",
+        "curated_fields",
+        "deprecated",
+        "description",
+        "docs_url",
+        "homepage",
+        "icon",
+        "kind",
+        "license",
+        "mcp_url",
+        "name",
+        "npm_package",
+        "packages",
+        "popularity",
+        "popularity_signals",
+        "registry_name",
+        "remotes",
+        "repo",
+        "schema_version",
+        "setup_note",
+        "slug",
+        "smithery_qualified_name",
+        "sources",
+        "stdio_only",
+        "tags",
+        "tool_count",
+        "transport",
+        "trust_tier",
+        "url_unverified",
+        "verified_upstream"
+      ],
+      "title": "McpEntry",
+      "type": "object"
+    },
+    "PackageRef": {
+      "additionalProperties": false,
+      "description": "One installable artefact a server publishes, as a pointer only.",
+      "properties": {
+        "identifier": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "registry_type": {
+          "maxLength": 32,
+          "minLength": 1,
+          "type": "string"
+        },
+        "runtime_hint": {
+          "default": "",
+          "maxLength": 32,
+          "type": "string"
+        },
+        "transport": {
+          "default": "stdio",
+          "enum": [
+            "stdio",
+            "streamable_http",
+            "sse",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "default": "",
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "identifier",
+        "registry_type",
+        "runtime_hint",
+        "transport",
+        "version"
+      ],
+      "title": "PackageRef",
+      "type": "object"
+    },
+    "PluginRef": {
+      "additionalProperties": false,
+      "description": "The Claude Code plugin a skill was published inside.",
+      "properties": {
+        "marketplace": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "marketplace_repo": {
+          "type": "string"
+        },
+        "plugin": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "sha": {
+          "default": "",
+          "type": "string"
+        },
+        "source_kind": {
+          "enum": [
+            "relative",
+            "url",
+            "git-subdir",
+            "github",
+            "npm",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "source_value": {
+          "maxLength": 512,
+          "type": "string"
+        }
+      },
+      "required": [
+        "marketplace",
+        "marketplace_repo",
+        "plugin",
+        "sha",
+        "source_kind",
+        "source_value"
+      ],
+      "title": "PluginRef",
+      "type": "object"
+    },
+    "PopularitySignals": {
+      "additionalProperties": false,
+      "description": "Raw counts from the upstreams, stored unscaled so scoring can change.",
+      "properties": {
+        "github_forks": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "github_stars": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "npm_dependents": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "npm_downloads_monthly": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "registry_version_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "smithery_use_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "github_forks",
+        "github_stars",
+        "npm_dependents",
+        "npm_downloads_monthly",
+        "registry_version_count",
+        "smithery_use_count"
+      ],
+      "title": "PopularitySignals",
+      "type": "object"
+    },
+    "RemoteRef": {
+      "additionalProperties": false,
+      "description": "One hosted endpoint a server advertises, template segments included.",
+      "properties": {
+        "header_names": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "templated": {
+          "default": false,
+          "type": "boolean"
+        },
+        "transport": {
+          "enum": [
+            "streamable_http",
+            "sse",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "url": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "header_names",
+        "templated",
+        "transport",
+        "url"
+      ],
+      "title": "RemoteRef",
+      "type": "object"
+    },
+    "RepoRef": {
+      "additionalProperties": false,
+      "description": "The source repository an entry points at, reduced to a stable triple.",
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "subpath": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "host",
+        "owner",
+        "repo",
+        "subpath"
+      ],
+      "title": "RepoRef",
+      "type": "object"
+    },
+    "SkillEntry": {
+      "additionalProperties": false,
+      "description": "One Agent Skill: where its ``SKILL.md`` lives, never what it says.",
+      "properties": {
+        "alias_keys": {
+          "default": [],
+          "description": "Other keys that resolve to this record, sorted and deduplicated.",
+          "items": {
+            "pattern": "^(mcp|skill):[a-z0-9]+:[\\x21-\\x7e]{1,220}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "allowed_tools": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "canonical_key": {
+          "description": "``<kind>:<space>:<identity>``, the stable identity of one record.",
+          "pattern": "^(mcp|skill):[a-z0-9]+:[\\x21-\\x7e]{1,220}$",
+          "type": "string"
+        },
+        "category": {
+          "default": "General",
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        "commit_sha": {
+          "default": "",
+          "type": "string"
+        },
+        "curated_fields": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "deprecated": {
+          "default": false,
+          "type": "boolean"
+        },
+        "description": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "docs_url": {
+          "default": "",
+          "type": "string"
+        },
+        "frontmatter_bytes": {
+          "default": 0,
+          "maximum": 8192,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "homepage": {
+          "default": "",
+          "type": "string"
+        },
+        "kind": {
+          "const": "skill",
+          "type": "string"
+        },
+        "license": {
+          "default": "",
+          "maxLength": 64,
+          "type": "string"
+        },
+        "model_invocable": {
+          "default": true,
+          "type": "boolean"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "plugin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PluginRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "popularity": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "popularity_signals": {
+          "$ref": "#/$defs/PopularitySignals",
+          "default": {
+            "github_forks": null,
+            "github_stars": null,
+            "npm_dependents": null,
+            "npm_downloads_monthly": null,
+            "registry_version_count": null,
+            "smithery_use_count": null
+          }
+        },
+        "repo": {
+          "$ref": "#/$defs/RepoRef"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "skill_name": {
+          "description": "The skill's own name, as its ``SKILL.md`` frontmatter declares it.",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$",
+          "type": "string"
+        },
+        "skill_path": {
+          "type": "string"
+        },
+        "skill_version": {
+          "default": "",
+          "maxLength": 32,
+          "type": "string"
+        },
+        "slug": {
+          "description": "The name Jhin's UI and its stored connections resolve by.",
+          "pattern": "^[a-z0-9_]{1,32}$",
+          "type": "string"
+        },
+        "source_ref": {
+          "type": "string"
+        },
+        "sources": {
+          "description": "Every upstream that contributed to this record, strongest first.",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array"
+        },
+        "tags": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "trust_tier": {
+          "enum": [
+            "curated",
+            "registry_verified",
+            "smithery_verified",
+            "indexed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias_keys",
+        "allowed_tools",
+        "canonical_key",
+        "category",
+        "commit_sha",
+        "curated_fields",
+        "deprecated",
+        "description",
+        "docs_url",
+        "frontmatter_bytes",
+        "homepage",
+        "kind",
+        "license",
+        "model_invocable",
+        "name",
+        "plugin",
+        "popularity",
+        "popularity_signals",
+        "repo",
+        "schema_version",
+        "skill_name",
+        "skill_path",
+        "skill_version",
+        "slug",
+        "source_ref",
+        "sources",
+        "tags",
+        "trust_tier"
+      ],
+      "title": "SkillEntry",
+      "type": "object"
+    },
+    "SourceRef": {
+      "additionalProperties": false,
+      "description": "Which upstream contributed a record, and where a human can read it.",
+      "properties": {
+        "source_id": {
+          "type": "string"
+        },
+        "upstream_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "upstream_id",
+        "url"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://raw.githubusercontent.com/jhin-dev/jhin-catalog/main/schema/catalog.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "One line of a jhin-catalog JSONL shard: either an MCP server or an Agent Skill, discriminated by ``kind``. Records are written with sorted keys, no separator spaces, and no omitted keys — every field is materialised at its default, so ``required`` here lists them all. Omit-when-default applies only to the exported ``catalog.json`` projection, never to ``data/**``.",
+  "discriminator": {
+    "mapping": {
+      "mcp": "#/$defs/McpEntry",
+      "skill": "#/$defs/SkillEntry"
+    },
+    "propertyName": "kind"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/McpEntry"
+    },
+    {
+      "$ref": "#/$defs/SkillEntry"
+    }
+  ],
+  "title": "CatalogEntry"
+}

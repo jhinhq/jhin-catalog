@@ -1,0 +1,19 @@
+{
+  "qualifiedName": "@acme-example/context",
+  "displayName": "Acme Context",
+  "description": "Project context for coding agents.",
+  "iconUrl": null,
+  "homepage": "https://smithery.ai/server/@acme-example/context",
+  "deploymentUrl": null,
+  "remote": false,
+  "useCount": 41000,
+  "connections": [
+    {
+      "type": "stdio",
+      "stdioFunction": "config => ({ command: 'npx', args: ['-y', '@acme-example/context'] })",
+      "configSchema": {"type": "object", "properties": {}}
+    }
+  ],
+  "security": null,
+  "tools": null
+}

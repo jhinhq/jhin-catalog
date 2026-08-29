@@ -1,0 +1,70 @@
+{
+  "servers": [
+    {
+      "server": {
+        "name": "io.github.example-org/templated",
+        "title": "Templated Endpoint",
+        "description": "Publishes a templated URL, so no concrete endpoint can be elected.",
+        "version": "3.1.0",
+        "websiteUrl": "https://templated.example/docs",
+        "remotes": [
+          {
+            "type": "streamable-http",
+            "url": "https://{region}.templated.example/mcp",
+            "headers": [{"name": "X-Api-Key", "description": "Workspace key"}]
+          }
+        ],
+        "packages": [
+          {
+            "registryType": "pypi",
+            "identifier": "templated-mcp",
+            "version": "3.1.0",
+            "transport": {"type": "stdio"},
+            "packageArguments": [
+              {"type": "", "name": "--config"},
+              {"type": "flag", "name": "--verbose"},
+              {"type": "environment", "name": "TEMPLATED_REGION"},
+              {"type": "literal", "value": "serve"}
+            ]
+          }
+        ]
+      },
+      "_meta": {
+        "io.modelcontextprotocol.registry/official": {
+          "status": "active",
+          "isLatest": true,
+          "serverId": "55555555-5555-4555-8555-555555555555"
+        }
+      }
+    },
+    {
+      "server": {
+        "name": "io.github.example-org/withdrawn",
+        "description": "Taken down by its publisher.",
+        "version": "0.4.0"
+      },
+      "_meta": {
+        "io.modelcontextprotocol.registry/official": {
+          "status": "deleted",
+          "isLatest": true,
+          "serverId": "66666666-6666-4666-8666-666666666666"
+        }
+      }
+    },
+    {
+      "server": {
+        "name": "io.github.example-org/superseded",
+        "description": "An older version that a newer one replaced.",
+        "version": "0.9.0"
+      },
+      "_meta": {
+        "io.modelcontextprotocol.registry/official": {
+          "status": "active",
+          "isLatest": false,
+          "serverId": "77777777-7777-4777-8777-777777777777"
+        }
+      }
+    }
+  ],
+  "metadata": {"count": 3}
+}

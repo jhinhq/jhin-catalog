@@ -1,0 +1,230 @@
+# The nightly crawl: fetch all five upstreams, rebuild every shard, and — only
+# if the diff gate passes — commit `data/` and `sources.lock` and cut a dated
+# release with the artefacts attached.
+#
+# The gate is the reason this workflow is written the way it is. Upstream APIs
+# are observed to serve empty pages under load, and a build that believed one
+# would delete most of the index in a single commit. So `jhin-catalog sync`
+# writes nothing until every threshold passes, and this workflow treats exit
+# code 3 as a hard stop: it fails, loudly, with the report on the log, and
+# leaves the committed data exactly as it was. A red nightly run is the
+# correct outcome of a bad upstream day. There is no override input here;
+# overriding the gate is `--allow-breaking` on a human's machine, in a pull
+# request someone reviews.
+name: Sync
+
+on:
+  schedule:
+    # Daily refresh so newly published servers and skills land without a commit.
+    - cron: "41 4 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: How to land the rebuilt data
+        required: false
+        default: commit
+        type: choice
+        options:
+          - commit
+          - pull-request
+          - dry-run
+      detail_top_n:
+        description: Smithery detail fetches (lower = faster, less complete)
+        required: false
+        default: "500"
+
+permissions:
+  contents: read
+
+concurrency:
+  # Never two crawls at once: the second would push over the first's commit.
+  group: sync-${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  sync:
+    name: Crawl, gate, publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+      tag: ${{ steps.tag.outputs.tag }}
+    env:
+      # The unattended trigger opens a pull request; only a human at
+      # workflow_dispatch may choose `commit`. The schedule supplies no
+      # inputs, so `inputs.mode` is empty there and this falls through to
+      # `pull-request` — which is what the README has always promised and
+      # what `|| 'commit'` quietly did not do. It matters most on the very
+      # first build, where `data/` is empty, the diff gate is skipped for
+      # want of a baseline, and whatever the crawl returns that night would
+      # otherwise be committed and released unreviewed — and then become the
+      # baseline every later gate measures against.
+      MODE: ${{ inputs.mode || 'pull-request' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+
+      - name: Sync
+        run: uv sync --frozen
+
+      - name: Record the pre-build state
+        id: before
+        run: |
+          before="$(git rev-parse HEAD)"
+          echo "commit=$before" >> "$GITHUB_OUTPUT"
+          echo "Building on top of $before"
+
+      # A token lifts the GitHub topic search from 10 to 30 requests a minute
+      # and is read only by github_topics and marketplaces. The crawl works
+      # without it, more slowly.
+      - name: Crawl and rebuild
+        id: build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Through the environment, never interpolated into the script.
+          # `detail_top_n` is a free-text dispatch input, and this job holds
+          # `contents: write` plus a token checkout leaves in .git/config, so
+          # a `${{ }}` splice here is remote code execution for anyone who can
+          # press the button.
+          DETAIL_TOP_N: ${{ inputs.detail_top_n || '500' }}
+        run: |
+          set +e
+          uv run jhin-catalog sync \
+            --json \
+            --detail-top-n "$DETAIL_TOP_N" \
+            ${{ (inputs.mode == 'dry-run') && '--dry-run' || '' }} \
+            > "$RUNNER_TEMP/sync.json"
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/sync.json"
+          case "$code" in
+            0)
+              echo "::notice title=Sync::Build complete and every gate passed."
+              ;;
+            3)
+              echo "::error title=Diff gate tripped::The rebuilt catalog would replace more of the committed data than the thresholds allow. NOTHING WAS WRITTEN and nothing will be committed. This is almost always an upstream serving empty or truncated pages, not a real deletion — read the DiffReport above, re-run once the upstream recovers, and only pass --allow-breaking from a reviewed pull request if the change is genuinely intended."
+              ;;
+            4)
+              echo "::error title=Fetch fault::A source could not be crawled (SourceError or FetchError). Nothing was written. Re-run; if it persists, the upstream API has changed shape."
+              ;;
+            5)
+              echo "::error title=Pipeline fault::normalize or dedupe rejected a record it should have handled (NormalizeError or DedupeError). Nothing was written. This is a code bug, not an upstream one."
+              ;;
+            6)
+              echo "::error title=Curated input rejected::curated/*.yaml did not load (CuratedError). Nothing was written. A denylist key that matches nothing is the usual cause."
+              ;;
+            *)
+              echo "::error title=Sync failed::jhin-catalog sync exited $code. Nothing was committed."
+              ;;
+          esac
+          exit "$code"
+
+      - name: Verify the freshly written shards
+        run: uv run jhin-catalog verify
+
+      - name: Is there anything to publish
+        id: diff
+        run: |
+          if git diff --quiet -- data sources.lock; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=No change::Every upstream returned what it returned yesterday. No commit, no release."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- data sources.lock
+          fi
+
+      - name: Name the release
+        id: tag
+        if: steps.diff.outputs.changed == 'true' && env.MODE == 'commit'
+        run: echo "tag=data-$(date -u +%Y-%m-%d)-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble the release artefacts
+        id: assets
+        if: steps.diff.outputs.changed == 'true' && env.MODE == 'commit'
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          # catalog.json is what a Jhin deployment actually reads; the tarball
+          # is the whole index for anyone who wants the long tail.
+          uv run jhin-catalog export --out "$RUNNER_TEMP/release/catalog.json"
+          tar --sort=name --owner=0 --group=0 --numeric-owner --mtime=@0 \
+            -czf "$RUNNER_TEMP/release/jhin-catalog-$TAG-data.tar.gz" \
+            data sources.lock schema/catalog.schema.json
+          cd "$RUNNER_TEMP/release"
+          find . -maxdepth 1 -type f -printf '%P\n' | LC_ALL=C sort | xargs sha256sum > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Commit the rebuilt index
+        if: steps.diff.outputs.changed == 'true' && env.MODE == 'commit'
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Only the build artefacts. Never `git add -A`.
+          git add -- data sources.lock
+          git commit -m "data: nightly sync ${TAG}" \
+            -m "Rebuilt from $(uv run python -c "import json,pathlib; print(len(json.loads(pathlib.Path('sources.lock').read_text())['sources']))") source(s); every diff-gate threshold passed."
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Tag and release
+        if: steps.diff.outputs.changed == 'true' && env.MODE == 'commit'
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Catalog ${{ steps.tag.outputs.tag }}
+          body: |
+            Nightly rebuild of the MCP server and Agent Skill index.
+
+            Every diff-gate threshold passed: no source collapsed to zero, and
+            neither the dropped nor the changed fraction exceeded its limit.
+
+            * `catalog.json` — the publishable projection a Jhin deployment syncs.
+            * `jhin-catalog-${{ steps.tag.outputs.tag }}-data.tar.gz` — all 512 shards, `sources.lock`, and the schema.
+            * `SHA256SUMS` — checksums for both.
+
+            Reproduce it: `jhin-catalog build --from-cache <recorded fetches>` over
+            the page bodies `sources.lock` hashes yields these bytes exactly.
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            ${{ runner.temp }}/release/catalog.json
+            ${{ runner.temp }}/release/jhin-catalog-${{ steps.tag.outputs.tag }}-data.tar.gz
+            ${{ runner.temp }}/release/SHA256SUMS
+
+      - name: Open a pull request instead
+        if: steps.diff.outputs.changed == 'true' && env.MODE == 'pull-request'
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
+        with:
+          branch: sync/rebuild
+          base: ${{ github.ref_name }}
+          title: "data: rebuild the catalog index"
+          commit-message: "data: rebuild the catalog index"
+          add-paths: |
+            data
+            sources.lock
+          body: |
+            A manually requested rebuild, held for review rather than committed.
+
+            Every diff-gate threshold passed, so this is a normal-sized change.
+            Read the `git diff --stat` on the workflow log before merging.
+          delete-branch: true

@@ -1,0 +1,57 @@
+{
+  "total_count": 3,
+  "incomplete_results": false,
+  "items": [
+    {
+      "id": 801234567,
+      "name": "tavily-mcp",
+      "full_name": "tavily-ai/tavily-mcp",
+      "html_url": "https://github.com/tavily-ai/tavily-mcp",
+      "description": "MCP server for the Tavily search API.",
+      "homepage": "https://docs.tavily.com/documentation/mcp",
+      "stargazers_count": 1400,
+      "forks_count": 118,
+      "open_issues_count": 9,
+      "archived": false,
+      "fork": false,
+      "language": "TypeScript",
+      "license": {"key": "mit", "spdx_id": "MIT", "name": "MIT License"},
+      "topics": ["mcp", "mcp-server", "search", "tavily"],
+      "pushed_at": "2026-08-01T10:00:00Z"
+    },
+    {
+      "id": 801234568,
+      "name": "servers",
+      "full_name": "modelcontextprotocol/servers",
+      "html_url": "https://github.com/modelcontextprotocol/servers",
+      "description": "Reference implementations of Model Context Protocol servers.",
+      "homepage": "",
+      "stargazers_count": 60000,
+      "forks_count": 5200,
+      "open_issues_count": 240,
+      "archived": false,
+      "fork": false,
+      "language": "Python",
+      "license": {"key": "mit", "spdx_id": "MIT", "name": "MIT License"},
+      "topics": ["mcp", "mcp-server", "modelcontextprotocol"],
+      "pushed_at": "2026-08-20T10:00:00Z"
+    },
+    {
+      "id": 801234569,
+      "name": "acme-skills",
+      "full_name": "acme-example/acme-skills",
+      "html_url": "https://github.com/acme-example/acme-skills",
+      "description": "Agent skills for the Acme toolchain.",
+      "homepage": null,
+      "stargazers_count": 37,
+      "forks_count": 4,
+      "open_issues_count": 1,
+      "archived": false,
+      "fork": false,
+      "language": null,
+      "license": null,
+      "topics": ["agent-skills", "claude-skills"],
+      "pushed_at": "2026-07-30T10:00:00Z"
+    }
+  ]
+}

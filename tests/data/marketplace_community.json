@@ -1,0 +1,15 @@
+{
+  "name": "acme-community",
+  "owner": {"name": "Acme Example"},
+  "plugins": [
+    {
+      "name": "review-pack",
+      "description": "Code and design review skills.",
+      "category": "developer tools",
+      "license": "Apache-2.0",
+      "keywords": ["review", "code"],
+      "source": "./review-pack",
+      "skills": ["./skills/code-review", "./skills/eng/deep-review/SKILL.md"]
+    }
+  ]
+}

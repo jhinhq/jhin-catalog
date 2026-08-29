@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Packaging output. Anchored, so the `build.py` module and any future
+# `build/` fixture directory under tests/ are untouched.
+/dist/
+/build/
+
+# Env / secrets. The crawl reads at most GITHUB_TOKEN and never writes it
+# anywhere; a local .env is still never committed.
+.env
+.env.*
+!.env.example
+*.local
+
+# Recorded upstream payloads for `jhin-catalog build --from-cache`. These can
+# be tens of megabytes and are reproducible from `sources.lock`.
+/.cache/
+/cache/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+
+# NOTHING BELOW THIS LINE MAY IGNORE A BUILD ARTEFACT.
+# `data/**`, `sources.lock`, `curated/**`, and `schema/catalog.schema.json`
+# are committed on purpose: the diff gate compares a new build against the
+# committed bytes, so an ignored artefact would silently disable the gate.

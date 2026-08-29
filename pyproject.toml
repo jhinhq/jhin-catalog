@@ -1,0 +1,53 @@
+[project]
+name = "jhin-catalog"
+version = "0.1.0"
+description = "An open index of MCP servers and Agent Skills, published as sorted JSONL shards for Jhin to sync (schema/catalog.schema.json)"
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28",
+    "pydantic>=2.10",
+    # Real YAML: SKILL.md frontmatter uses block scalars that break line regexes.
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+jhin-catalog = "jhin_catalog.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jhin_catalog"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12",
+    "mypy>=1.14",
+    "pytest>=8.3",
+    "pytest-asyncio>=1.0",
+    "types-pyyaml>=6.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "ASYNC", "RUF"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: hits real upstream APIs (deselected by default)",
+]
+addopts = "-m 'not integration' --import-mode=importlib"

@@ -1,0 +1,60 @@
+{
+  "servers": [
+    {
+      "qualifiedName": "exa",
+      "displayName": "Exa Search",
+      "description": "Neural web search and content retrieval.",
+      "homepage": "https://smithery.ai/server/exa",
+      "iconUrl": "https://spjawbfpwezjfmicopsl.supabase.co/storage/v1/object/public/server-icons/exa.png",
+      "useCount": 87579,
+      "remote": true,
+      "verified": true,
+      "createdAt": "2026-01-14T09:12:44.000Z"
+    },
+    {
+      "qualifiedName": "@acme-example/context",
+      "displayName": "Acme Context",
+      "description": "Project context for coding agents.",
+      "homepage": "https://smithery.ai/server/@acme-example/context",
+      "iconUrl": null,
+      "useCount": 41000,
+      "remote": true,
+      "verified": false,
+      "createdAt": "2026-02-02T11:00:00.000Z"
+    },
+    {
+      "qualifiedName": "@acme-example/notes",
+      "displayName": "Acme Notes",
+      "description": "Notes, tagged and searchable.",
+      "homepage": "https://smithery.ai/server/@acme-example/notes",
+      "iconUrl": null,
+      "useCount": 12000,
+      "remote": null,
+      "verified": false,
+      "createdAt": "2026-03-03T11:00:00.000Z"
+    },
+    {
+      "qualifiedName": "@acme-example/hidden",
+      "displayName": "Acme Hidden",
+      "description": "Not listed by its author.",
+      "homepage": "https://smithery.ai/server/@acme-example/hidden",
+      "useCount": 900,
+      "remote": true,
+      "verified": false,
+      "unlisted": true,
+      "createdAt": "2026-04-04T11:00:00.000Z"
+    },
+    {
+      "qualifiedName": "@acme-example/retired",
+      "displayName": "Acme Retired",
+      "description": "Switched off by its author.",
+      "homepage": "https://smithery.ai/server/@acme-example/retired",
+      "useCount": 120,
+      "remote": false,
+      "verified": false,
+      "inactive": true,
+      "createdAt": "2026-05-05T11:00:00.000Z"
+    }
+  ],
+  "pagination": {"currentPage": 1, "pageSize": 100, "totalPages": 1, "totalCount": 5}
+}

@@ -1,0 +1,29 @@
+{
+  "qualifiedName": "exa",
+  "displayName": "Exa Search",
+  "description": "Neural web search and content retrieval.",
+  "iconUrl": "https://spjawbfpwezjfmicopsl.supabase.co/storage/v1/object/public/server-icons/exa.png",
+  "homepage": "https://smithery.ai/server/exa",
+  "deploymentUrl": "https://server.smithery.ai/exa/mcp",
+  "remote": true,
+  "useCount": 87579,
+  "connections": [
+    {
+      "type": "http",
+      "deploymentUrl": "https://server.smithery.ai/exa/mcp",
+      "configSchema": {
+        "type": "object",
+        "required": ["exaApiKey"],
+        "properties": {
+          "exaApiKey": {"type": "string", "description": "Your Exa API key."},
+          "resultsPerQuery": {"type": "integer", "description": "How many results to return."}
+        }
+      }
+    }
+  ],
+  "security": {"scanPassed": true},
+  "tools": [
+    {"name": "web_search_exa", "description": "Search the web."},
+    {"name": "crawling_exa", "description": "Fetch a page as text."}
+  ]
+}

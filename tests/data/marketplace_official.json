@@ -1,0 +1,66 @@
+{
+  "name": "anthropics-official",
+  "owner": {"name": "Anthropic", "email": "support@anthropic.example"},
+  "metadata": {"version": "1.0.0", "pluginRoot": "./plugins"},
+  "renames": {"adlc": "agentforce-adlc"},
+  "plugins": [
+    {
+      "name": "design",
+      "description": "Design critique, handoff, and system skills.",
+      "category": "Design",
+      "license": "MIT",
+      "keywords": ["design", "ux"],
+      "source": "./design"
+    },
+    {
+      "name": "root-plugin",
+      "description": "A plugin whose files sit at the plugin root itself.",
+      "category": "General",
+      "source": "./"
+    },
+    {
+      "name": "agentforce-adlc",
+      "description": "Agent development lifecycle skills.",
+      "category": "Developer tools",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/SalesforceAIResearch/agentforce-adlc.git",
+        "sha": "d16d14ac1f4b3c2a5e6f708192a3b4c5d6e7f809"
+      }
+    },
+    {
+      "name": "hybrid",
+      "description": "The schema-invalid url-plus-path form the wild actually serves.",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/acme-example/monorepo.git",
+        "path": "packages/hybrid"
+      }
+    },
+    {
+      "name": "subdir",
+      "description": "The declared git-subdir form.",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/acme-example/monorepo.git",
+        "path": "packages/subdir",
+        "ref": "main"
+      }
+    },
+    {
+      "name": "from-github",
+      "description": "Named by owner and repository.",
+      "source": {"source": "github", "repo": "acme-example/from-github"}
+    },
+    {
+      "name": "from-npm",
+      "description": "Published to npm.",
+      "source": {"source": "npm", "package": "@acme-example/from-npm"}
+    },
+    {
+      "name": "mystery",
+      "description": "A shape nobody has documented.",
+      "source": {"source": "carrier-pigeon", "coop": "west"}
+    }
+  ]
+}

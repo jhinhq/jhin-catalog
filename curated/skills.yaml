@@ -1,0 +1,83 @@
+# Curated skill overrides and the marketplace allowlist.
+#
+# Why an allowlist and not an open crawl
+# --------------------------------------
+# A SKILL.md is a prompt. Indexing one is publishing an instruction that some
+# agent will later read as guidance, which makes a skill index a supply chain
+# in a way an MCP index is not: an MCP row points at a server a person still
+# has to authenticate against, while a skill row points at text a model may
+# act on. ``.claude-plugin/marketplace.json`` is a file anyone can add to any
+# repository, and ``topic:claude-code-plugin`` is a label anyone can apply, so
+# neither is evidence of anything. Crawling every repo that carries them would
+# let a stranger put text into Jhin's index by pushing one commit.
+#
+# So discovery is a proposal and this file is the decision. The crawler may
+# search the topic and read any marketplace manifest it finds; only repos
+# listed under ``marketplaces.allow`` produce published skill entries. Adding
+# one is a reviewed pull request against this file, and the review is the
+# audit trail. That also bounds the crawl: the ~500-blob tree walk per repo is
+# the expensive part of a sync, and an allowlist keeps it proportional to what
+# is actually published rather than to what exists.
+#
+# What earns a place on the list
+# ------------------------------
+# An entry needs all four:
+#   1. an identifiable maintainer — a company, a foundation, or a named person
+#      with a history, not an anonymous account;
+#   2. a marketplace manifest that has been stable across at least two
+#      releases, so the repo is maintained rather than abandoned;
+#   3. skills whose ``description`` frontmatter honestly describes what the
+#      body instructs, checked by reading a sample, not by trusting the field;
+#   4. a licence that permits redistribution of the metadata this index stores
+#      (name, description, path, commit) — this repo never stores skill text.
+#
+# ``notes`` records who checked and what they checked, because the value of a
+# curated list is entirely in whether someone can tell it was really curated.
+#
+# ``entries`` holds the same ``CuratedOverride`` shape as ``curated/mcp.yaml``:
+# a ``key`` from section 2.1 (``skill:skill:…`` for a repository path,
+# ``skill:plugin:…`` for a marketplace coordinate), ``kind: skill``, optional
+# ``aliases``, and a partial ``SkillEntry`` under ``fields``. It is empty until
+# a shipped skill needs a fact the frontmatter does not carry — the frontmatter
+# is authored by the skill's own maintainer and is usually the better source.
+
+version: 1
+
+marketplaces:
+  allow:
+    - repo: anthropics/claude-plugins-official
+      maintainer: Anthropic
+      notes: >-
+        The first-party marketplace, pinned as a seed repo by section 4.9 of
+        the build specification. It is the source of the ``renames`` map that
+        keeps a skill's identity stable when a plugin is renamed, so it is
+        crawled first and its aliases are applied before any other repo's.
+    - repo: anthropics/claude-code
+      maintainer: Anthropic
+      notes: >-
+        The Claude Code repository itself, pinned as the second seed repo. It
+        carries the reference plugins that the plugin format is documented
+        against, which makes it the fixture the parser is tuned on.
+
+  # Community marketplaces go here after review against the four criteria
+  # above. This list is deliberately empty rather than pre-populated: every
+  # candidate has to be read by a person before it ships, and a plausible
+  # repository name is not evidence that the repository exists, is maintained,
+  # or publishes what its topic claims. Seeding it from memory would put
+  # unreviewed crawl targets into production, which is the exact failure this
+  # file exists to prevent.
+  #
+  #   - repo: owner/name
+  #     maintainer: Who is accountable for the contents
+  #     notes: >-
+  #       Who reviewed it, when, and which skills they actually read.
+  community: []
+
+  discovery:
+    # ``MarketplacesSource`` searches this topic to find candidates. Anything
+    # it finds that is not on the allowlist is reported for review and
+    # produces no entry.
+    topic: claude-code-plugin
+    require_allowlist: true
+
+entries: []

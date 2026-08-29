@@ -1,0 +1,77 @@
+{
+  "objects": [
+    {
+      "package": {
+        "name": "tavily-mcp",
+        "version": "0.2.9",
+        "description": "MCP server for the Tavily search API.",
+        "keywords": ["mcp", "mcp-server", "search", "tavily"],
+        "date": "2026-06-01T10:00:00.000Z",
+        "links": {
+          "npm": "https://www.npmjs.com/package/tavily-mcp",
+          "homepage": "https://docs.tavily.com/documentation/mcp",
+          "repository": "git+https://github.com/tavily-ai/tavily-mcp.git"
+        },
+        "license": "MIT"
+      },
+      "downloads": {"monthly": 412000, "weekly": 98000},
+      "dependents": "67410",
+      "score": {"final": 0.42, "detail": {"quality": 0.7, "popularity": 0.3, "maintenance": 0.9}},
+      "flags": {},
+      "searchScore": 1200.4
+    },
+    {
+      "package": {
+        "name": "@acme-example/mcp-notes",
+        "version": "1.2.0",
+        "description": "Notes over MCP.",
+        "keywords": ["mcp", "notes"],
+        "date": "2026-05-20T10:00:00.000Z",
+        "links": {
+          "npm": "https://www.npmjs.com/package/@acme-example/mcp-notes",
+          "repository": "https://github.com/acme-example/mcp-notes"
+        },
+        "license": "Apache-2.0"
+      },
+      "downloads": {"monthly": 3100, "weekly": 700},
+      "dependents": "not-a-number",
+      "score": {"final": 0.2, "detail": {"quality": 0.4, "popularity": 0.1, "maintenance": 0.5}},
+      "flags": {},
+      "searchScore": 40.1
+    },
+    {
+      "package": {
+        "name": "@acme-example/mcp-legacy",
+        "version": "0.0.3",
+        "description": "An abandoned package the registry still serves.",
+        "keywords": ["mcp"],
+        "date": "2024-01-01T10:00:00.000Z",
+        "links": {
+          "npm": "https://www.npmjs.com/package/@acme-example/mcp-legacy",
+          "repository": "git://github.com/acme-example/mcp-legacy.git"
+        },
+        "license": "MIT"
+      },
+      "downloads": {"monthly": 12, "weekly": 2},
+      "dependents": "0",
+      "score": {"final": 0.05, "detail": {"quality": 0.1, "popularity": 0.0, "maintenance": 0.0}},
+      "flags": {"insecure": 1},
+      "searchScore": 0.9
+    },
+    {
+      "package": {
+        "name": "@acme-example/mcp-nolinks",
+        "version": "2.0.0",
+        "description": "No links block at all.",
+        "keywords": ["mcp", "modelcontextprotocol"],
+        "date": "2026-07-11T10:00:00.000Z"
+      },
+      "downloads": {"monthly": 640, "weekly": 150},
+      "score": {"final": 0.1, "detail": {"quality": 0.3, "popularity": 0.05, "maintenance": 0.4}},
+      "flags": {},
+      "searchScore": 12.0
+    }
+  ],
+  "total": 4,
+  "time": "Sat Aug 29 2026 04:11:07 GMT+0000 (UTC)"
+}

@@ -1,0 +1,16 @@
+{
+  "sha": "3f7a2c1b9d8e4f5a6b7c8d9e0f1a2b3c4d5e6f70",
+  "url": "https://api.github.com/repos/acme-example/acme-skills/git/trees/3f7a2c1b",
+  "truncated": false,
+  "tree": [
+    {"path": "README.md", "mode": "100644", "type": "blob", "sha": "aaaa000000000000000000000000000000000001", "size": 900},
+    {"path": "SKILL.md", "mode": "100644", "type": "blob", "sha": "aaaa000000000000000000000000000000000002", "size": 40},
+    {"path": "skills", "mode": "040000", "type": "tree", "sha": "aaaa000000000000000000000000000000000003"},
+    {"path": "skills/foo/SKILL.md", "mode": "100644", "type": "blob", "sha": "aaaa000000000000000000000000000000000004", "size": 1200},
+    {"path": "skills/eng/code-review/SKILL.md", "mode": "100644", "type": "blob", "sha": "aaaa000000000000000000000000000000000005", "size": 2400},
+    {"path": "plugins/x/skills/y/SKILL.md", "mode": "100644", "type": "blob", "sha": "aaaa000000000000000000000000000000000006", "size": 800},
+    {"path": "plugins/x/README.md", "mode": "100644", "type": "blob", "sha": "aaaa000000000000000000000000000000000007", "size": 300},
+    {"path": "docs/SKILL.md.tmpl", "mode": "100644", "type": "blob", "sha": "aaaa000000000000000000000000000000000008", "size": 120},
+    {"path": "docs/skills/SKILL.md", "mode": "040000", "type": "tree", "sha": "aaaa000000000000000000000000000000000009"}
+  ]
+}

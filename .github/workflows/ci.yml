@@ -1,0 +1,134 @@
+# Every push and pull request runs the four repository gates — ruff lint,
+# ruff format, mypy --strict, pytest — and then two gates that exist because
+# `data/` is a build artefact rather than source: `jhin-catalog verify`
+# re-derives every shard from its own parsed contents and fails if a byte was
+# hand-edited, and a JSON Schema pass validates each record against the
+# committed `schema/catalog.schema.json`. Together they mean a green tick on a
+# pull request is a promise that the published index was produced by the code
+# in the same commit. Nothing here opens a socket; the nightly crawl is
+# sync.yml.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  python:
+    name: Lint / typecheck / tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+
+      - name: Sync
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: mypy
+        run: uv run mypy
+
+      - name: Unit tests
+        run: uv run pytest -q
+
+      - name: Catalog verify (data/ is generated, not edited)
+        run: uv run jhin-catalog verify
+
+  data-schema:
+    name: JSON Schema validation of data/
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
+      # jsonschema is deliberately not a project dependency: the build never
+      # needs it, because pydantic is the authority on what a record may
+      # contain. This job exists to prove that the schema published for
+      # downstream consumers — the one a Jhin deployment validates against
+      # before it writes a row into Postgres — actually accepts every record
+      # this repository ships. An ephemeral `--with` keeps that check honest
+      # without widening the runtime surface.
+      - name: Validate every shard record against schema/catalog.schema.json
+        run: |
+          uv run --no-project --with jsonschema python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          from jsonschema import Draft202012Validator
+
+          # 256 shards per kind, both kinds always written whole.
+          EXPECTED_SHARDS = 512
+
+          schema = json.loads(pathlib.Path("schema/catalog.schema.json").read_text("utf-8"))
+          Draft202012Validator.check_schema(schema)
+          validator = Draft202012Validator(schema)
+
+          # An empty or missing data/ used to print "validated 0 record(s)"
+          # and exit 0, which made this job's promise — that the published
+          # index was produced by the code in the same commit — vacuous on
+          # exactly the tree where it mattered most.
+          shards = sorted(pathlib.Path("data").rglob("*.jsonl"))
+          if len(shards) != EXPECTED_SHARDS:
+              print(f"data/ holds {len(shards)} shard file(s), expected "
+                    f"{EXPECTED_SHARDS}; there is nothing to validate",
+                    file=sys.stderr)
+              sys.exit(1)
+
+          records = 0
+          failures = 0
+          for path in shards:
+              raw = path.read_bytes()
+              if not raw:
+                  continue
+              if b"\r" in raw:
+                  print(f"{path}: contains a carriage return", file=sys.stderr)
+                  failures += 1
+              if not raw.endswith(b"\n"):
+                  print(f"{path}: does not end in a newline", file=sys.stderr)
+                  failures += 1
+              for number, line in enumerate(raw.decode("utf-8").splitlines(), start=1):
+                  records += 1
+                  entry = json.loads(line)
+                  for error in validator.iter_errors(entry):
+                      location = "/".join(str(part) for part in error.absolute_path)
+                      print(f"{path}:{number}: {location or '<root>'}: {error.message}",
+                            file=sys.stderr)
+                      failures += 1
+
+          print(f"validated {records} record(s) across {len(shards)} shard(s) "
+                "against schema/catalog.schema.json")
+          sys.exit(1 if failures else 0)
+          PY

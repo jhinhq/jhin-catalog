@@ -1,0 +1,38 @@
+# Entries this index refuses to publish, and why.
+#
+# A denylist key removes an entry after the merge and before anything is
+# written, so it beats every source including ``curated/mcp.yaml``. It is the
+# last resort: prefer fixing the record when the record is merely wrong, and
+# reach for this only when the entry should not exist at all — a server whose
+# endpoint was taken over, a package that turned out to be typosquatting a
+# real one, a skill whose text does not do what its description says, a
+# duplicate the identity rules cannot separate, or a takedown request.
+#
+# Format
+# ------
+# Each entry is a mapping with exactly two fields:
+#
+#   key     A canonical or alias key from section 2.1, matching
+#           ``^(mcp|skill):[a-z0-9]+:[\x21-\x7e]{1,220}$``. The key is matched
+#           against both ``canonical_key`` and ``alias_keys``, so an entry can
+#           be removed by whichever identity you have in front of you.
+#
+#   reason  Required, 8 to 300 characters, in prose. Not optional and not a
+#           placeholder: a denial with no stated reason is indistinguishable
+#           from a mistake six months later, and nobody will dare remove it.
+#           Say what was observed and when, not what category it falls under.
+#
+#     - key: mcp:url:takenover.example/mcp
+#       reason: >-
+#         Domain expired 2026-07-02 and was re-registered by an unrelated
+#         party; the endpoint now answers with a different tool set.
+#
+# A key that matches nothing is a build failure, not a warning. A stale denial
+# means either the entry came back under a new identity — in which case the
+# denial needs updating rather than deleting — or the reason no longer applies
+# and the line should go. Both need a person, so ``jhin-catalog verify`` stops
+# the build until one looks.
+
+version: 1
+
+entries: []

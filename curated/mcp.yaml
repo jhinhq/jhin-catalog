@@ -1,0 +1,693 @@
+# Curated MCP overrides — the highest-trust records in this index.
+#
+# Every entry here was written and checked by a human against the provider's
+# own documentation, so a crawl may add facts to one of these records but may
+# never overwrite a field this file sets. ``dedupe.apply_curated`` overlays
+# these fields after the merge and names each one in ``curated_fields``, and
+# ``dedupe.elect_trust_tier`` puts every key below in the ``curated`` tier.
+#
+# The fifty records are Jhin's shipped connector catalog, ported field for
+# field: each ``auth_note`` says what the provider actually accepts, each
+# ``setup_note`` says what a person has to do before the connection will work,
+# and ``url_unverified`` marks an endpoint nobody has completed a handshake
+# against. Those four judgements are the whole point of the file — a crawler
+# can find an endpoint but cannot tell you that Linear's remote server speaks
+# OAuth and Jhin does not, or that Tavily wants its key in the URL.
+#
+# ``key`` is a canonical or alias key from section 2.1 of the build
+# specification. It is a ``url`` key when the provider publishes a concrete
+# endpoint, a ``repo`` key (with ``#subpath`` inside a monorepo) when it does
+# not, and ``mcp:registry:dev.jhin/<slug>`` for the records that describe a
+# Jhin-native connector rather than any published server. A key matching no
+# crawled entry creates one from ``fields`` alone, which is how the
+# self-hosted and native records reach the catalog at all.
+#
+# ``fields`` holds a partial ``McpEntry``: every name must be a settable field
+# on the model, ``category`` must come from ``CATALOG_CATEGORIES``, ``icon``
+# from ``CATALOG_ICONS``, and ``connector_type`` from ``CONNECTOR_TYPES``.
+# ``tests/test_curated.py`` enforces all of that plus the connector_config
+# bounds, so a typo here fails CI rather than the nightly sync.
+
+version: 1
+
+entries:
+  - key: mcp:url:api.githubcopilot.com/mcp
+    kind: mcp
+    aliases:
+      - mcp:repo:github.com/github/github-mcp-server
+    fields:
+      slug: github
+      name: GitHub
+      category: Developer tools
+      icon: github
+      description: "Repositories, branches, pull requests, issues, and Actions."
+      connector_type: github
+      mcp_url: "https://api.githubcopilot.com/mcp/"
+      transport: streamable_http
+      auth_hint: bearer
+      auth_note: "Use a fine-grained personal access token as the bearer token."
+      docs_url: https://github.com/github/github-mcp-server
+  - key: mcp:url:mcp.linear.app/mcp
+    kind: mcp
+    fields:
+      slug: linear
+      name: Linear
+      category: Project management
+      icon: linear
+      description: "Issues, projects, cycles, and comments."
+      connector_type: linear
+      mcp_url: https://mcp.linear.app/mcp
+      transport: streamable_http
+      auth_hint: oauth
+      auth_note: "Linear's remote MCP server uses OAuth sign-in, which Jhin does not support yet. Use the native Linear app with a personal API key instead."
+      docs_url: https://linear.app/docs/mcp
+  - key: mcp:url:mcp.vercel.com
+    kind: mcp
+    fields:
+      slug: vercel
+      name: Vercel
+      category: Developer tools
+      icon: vercel
+      description: "Projects, deployments, and domains."
+      connector_type: vercel
+      mcp_url: https://mcp.vercel.com
+      transport: streamable_http
+      auth_hint: oauth
+      auth_note: "The remote server uses OAuth; the native Vercel app works with an access token."
+      docs_url: https://vercel.com/docs/mcp/vercel-mcp
+  - key: mcp:url:mcp.supabase.com/mcp
+    kind: mcp
+    fields:
+      slug: supabase
+      name: Supabase
+      category: Data & infrastructure
+      icon: database
+      description: "Projects, database queries, edge functions, and logs."
+      connector_type: supabase
+      mcp_url: https://mcp.supabase.com/mcp
+      transport: streamable_http
+      auth_hint: oauth
+      auth_note: "The hosted server signs in with OAuth; the native Supabase app uses a management token or database connection."
+      docs_url: https://supabase.com/docs/guides/getting-started/mcp
+  - key: mcp:url:mcp.notion.com/mcp
+    kind: mcp
+    fields:
+      slug: notion
+      name: Notion
+      category: Documents & knowledge
+      icon: notebook
+      description: "Pages, databases, and comments in your Notion workspace."
+      mcp_url: https://mcp.notion.com/mcp
+      transport: streamable_http
+      auth_hint: oauth
+      auth_note: "Notion's hosted server uses OAuth sign-in (not supported yet). Self-host the open-source Notion MCP server with an integration token as a bearer token instead."
+      docs_url: https://developers.notion.com/docs/mcp
+  - key: mcp:registry:dev.jhin/slack
+    kind: mcp
+    fields:
+      slug: slack
+      name: Slack
+      category: Communication
+      icon: message-square
+      description: "Channels, messages, and people."
+      url_unverified: true
+      auth_hint: bearer
+      auth_note: "Slack has no official hosted MCP server; run a community server with a bot token and enter its URL."
+      docs_url: "https://api.slack.com/"
+      setup_note: "Self-host a Slack MCP server (for example the reference server from the MCP community) behind HTTPS and paste its URL."
+  - key: mcp:url:mcp.atlassian.com/v1/sse
+    kind: mcp
+    fields:
+      slug: atlassian
+      name: Atlassian (Jira & Confluence)
+      category: Project management
+      icon: kanban
+      description: "Jira issues and Confluence pages through Atlassian's remote server."
+      mcp_url: https://mcp.atlassian.com/v1/sse
+      transport: sse
+      auth_hint: oauth
+      auth_note: "Atlassian's remote server uses OAuth sign-in, which Jhin does not support yet; self-hosted servers with API tokens work with the bearer option."
+      docs_url: "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/"
+  - key: mcp:url:mcp.stripe.com
+    kind: mcp
+    fields:
+      slug: stripe
+      name: Stripe
+      category: Payments & commerce
+      icon: credit-card
+      description: "Customers, payments, invoices, and subscriptions."
+      mcp_url: https://mcp.stripe.com
+      transport: streamable_http
+      auth_hint: bearer
+      auth_note: "Use a restricted API key as the bearer token."
+      docs_url: https://docs.stripe.com/mcp
+  - key: mcp:url:mcp.hubspot.com
+    kind: mcp
+    fields:
+      slug: hubspot
+      name: HubSpot
+      category: CRM & support
+      icon: users
+      description: "Contacts, companies, deals, and tickets."
+      mcp_url: https://mcp.hubspot.com
+      url_unverified: true
+      auth_hint: oauth
+      auth_note: "HubSpot's remote server uses OAuth; check the docs for the current endpoint."
+      docs_url: https://developers.hubspot.com/mcp
+  - key: mcp:url:mcp.sentry.dev/mcp
+    kind: mcp
+    aliases:
+      - mcp:npm:@sentry/mcp-server
+    fields:
+      slug: sentry
+      name: Sentry
+      category: Developer tools
+      icon: bug
+      description: "Issues, events, and releases."
+      mcp_url: https://mcp.sentry.dev/mcp
+      transport: streamable_http
+      auth_hint: oauth
+      auth_note: "The hosted server uses OAuth; self-host sentry-mcp with an auth token for the bearer option."
+      docs_url: "https://docs.sentry.io/product/sentry-mcp/"
+  - key: mcp:url:docs.mcp.cloudflare.com/mcp
+    kind: mcp
+    fields:
+      slug: cloudflare
+      name: Cloudflare
+      category: Data & infrastructure
+      icon: cloud
+      description: "Cloudflare documentation search (no sign-in). Other Cloudflare servers need OAuth."
+      mcp_url: https://docs.mcp.cloudflare.com/mcp
+      transport: streamable_http
+      auth_hint: none
+      docs_url: https://github.com/cloudflare/mcp-server-cloudflare
+  - key: mcp:url:mcp.paypal.com/mcp
+    kind: mcp
+    fields:
+      slug: paypal
+      name: PayPal
+      category: Payments & commerce
+      icon: credit-card
+      description: "Invoices, orders, and disputes."
+      mcp_url: https://mcp.paypal.com/mcp
+      url_unverified: true
+      auth_hint: bearer
+      auth_note: "Use an access token from PayPal's developer dashboard."
+      docs_url: "https://developer.paypal.com/tools/mcp-server/"
+  - key: mcp:url:mcp.squareup.com/sse
+    kind: mcp
+    fields:
+      slug: square
+      name: Square
+      category: Payments & commerce
+      icon: credit-card
+      description: "Catalog, orders, payments, and customers."
+      mcp_url: https://mcp.squareup.com/sse
+      url_unverified: true
+      transport: sse
+      auth_hint: bearer
+      docs_url: https://developer.squareup.com/docs/mcp
+  - key: mcp:url:mcp.intercom.com/mcp
+    kind: mcp
+    fields:
+      slug: intercom
+      name: Intercom
+      category: CRM & support
+      icon: life-buoy
+      description: "Conversations, contacts, and help articles."
+      mcp_url: https://mcp.intercom.com/mcp
+      url_unverified: true
+      auth_hint: oauth
+      docs_url: https://developers.intercom.com/docs/guides/mcp
+  - key: mcp:registry:dev.jhin/zapier
+    kind: mcp
+    fields:
+      slug: zapier
+      name: Zapier MCP
+      category: Automation
+      icon: zap
+      description: "Thousands of apps through your personal Zapier MCP server."
+      url_unverified: true
+      auth_hint: none
+      auth_note: "Your Zapier MCP URL is personal and already authenticates you; keep it private."
+      docs_url: https://zapier.com/mcp
+      setup_note: "Create a server at zapier.com/mcp, copy its unique URL, and paste it here."
+  - key: mcp:url:mcp.asana.com/sse
+    kind: mcp
+    fields:
+      slug: asana
+      name: Asana
+      category: Project management
+      icon: check-square
+      description: "Tasks, projects, and goals."
+      mcp_url: https://mcp.asana.com/sse
+      transport: sse
+      auth_hint: oauth
+      auth_note: "Asana's remote server uses OAuth sign-in (not supported yet)."
+      docs_url: https://developers.asana.com/docs/using-asanas-model-control-protocol-mcp-server
+  - key: mcp:url:mcp.monday.com/sse
+    kind: mcp
+    fields:
+      slug: monday
+      name: monday.com
+      category: Project management
+      icon: kanban
+      description: "Boards, items, and updates."
+      mcp_url: https://mcp.monday.com/sse
+      url_unverified: true
+      transport: sse
+      auth_hint: oauth
+      docs_url: https://developer.monday.com/apps/docs/mondaycom-mcp-integration
+  - key: mcp:registry:dev.jhin/clickup
+    kind: mcp
+    fields:
+      slug: clickup
+      name: ClickUp
+      category: Project management
+      icon: check-square
+      description: "Tasks, lists, and docs."
+      url_unverified: true
+      auth_hint: bearer
+      docs_url: "https://developer.clickup.com/"
+      setup_note: "Self-host a ClickUp MCP server with an API token and paste its URL."
+  - key: mcp:url:mcp.canva.com/mcp
+    kind: mcp
+    fields:
+      slug: canva
+      name: Canva
+      category: Design
+      icon: palette
+      description: "Designs, folders, and exports."
+      mcp_url: https://mcp.canva.com/mcp
+      transport: streamable_http
+      auth_hint: oauth
+      auth_note: "Canva's server uses OAuth sign-in (not supported yet)."
+      docs_url: "https://www.canva.dev/docs/connect/canva-mcp-server-setup/"
+  - key: mcp:url:mcp.figma.com/mcp
+    kind: mcp
+    fields:
+      slug: figma
+      name: Figma
+      category: Design
+      icon: pen-tool
+      description: "Files, components, and design context."
+      mcp_url: https://mcp.figma.com/mcp
+      transport: streamable_http
+      auth_hint: oauth
+      auth_note: "Figma's remote server uses OAuth sign-in (not supported yet)."
+      docs_url: https://help.figma.com/hc/en-us/articles/32132100833559-Guide-to-the-Figma-MCP-server
+  - key: mcp:registry:dev.jhin/google_drive
+    kind: mcp
+    fields:
+      slug: google_drive
+      name: Google Drive
+      category: Storage
+      icon: folder
+      description: "Files and folders in Drive."
+      url_unverified: true
+      auth_hint: bearer
+      docs_url: https://developers.google.com/drive
+      setup_note: "Google does not host a Drive MCP server; self-host a community server configured with your Google credentials."
+  - key: mcp:registry:dev.jhin/google_calendar
+    kind: mcp
+    fields:
+      slug: google_calendar
+      name: Google Calendar
+      category: Productivity
+      icon: calendar
+      description: "Events and availability."
+      url_unverified: true
+      auth_hint: bearer
+      docs_url: https://developers.google.com/calendar
+      setup_note: "Self-host a community Google Calendar MCP server and paste its URL."
+  - key: mcp:registry:dev.jhin/gmail
+    kind: mcp
+    fields:
+      slug: gmail
+      name: Gmail
+      category: Communication
+      icon: mail
+      description: "Read, search, and draft email."
+      url_unverified: true
+      auth_hint: bearer
+      docs_url: https://developers.google.com/gmail
+      setup_note: "Self-host a community Gmail MCP server and paste its URL."
+  - key: mcp:repo:github.com/domdomegg/airtable-mcp-server
+    kind: mcp
+    aliases:
+      - mcp:npm:airtable-mcp-server
+    fields:
+      slug: airtable
+      name: Airtable
+      category: Data & infrastructure
+      icon: table
+      description: "Bases, tables, and records."
+      url_unverified: true
+      auth_hint: bearer
+      docs_url: https://github.com/domdomegg/airtable-mcp-server
+      setup_note: "Community server; run it behind HTTPS and paste its URL."
+      stdio_only: true
+  - key: mcp:repo:github.com/modelcontextprotocol/servers-archived#src/postgres
+    kind: mcp
+    fields:
+      slug: postgres
+      name: PostgreSQL
+      category: Data & infrastructure
+      icon: database
+      description: "Read-only SQL over a Postgres database."
+      url_unverified: true
+      auth_hint: none
+      docs_url: https://github.com/modelcontextprotocol/servers-archived/tree/main/src/postgres
+      setup_note: "Needs a self-hosted MCP server; stdio servers are not supported yet. For Supabase databases use the native Supabase app."
+      stdio_only: true
+  - key: mcp:repo:github.com/microsoft/playwright-mcp
+    kind: mcp
+    aliases:
+      - mcp:npm:@playwright/mcp
+    fields:
+      slug: playwright
+      name: Playwright browser
+      category: Search & web
+      icon: globe
+      description: "Drive a real browser: navigate, click, read pages."
+      url_unverified: true
+      auth_hint: none
+      docs_url: https://github.com/microsoft/playwright-mcp
+      setup_note: "Run playwright-mcp with --port behind HTTPS and paste its URL. Only connect servers you trust: browsing tools can reach any site."
+  - key: mcp:repo:github.com/modelcontextprotocol/servers#src/filesystem
+    kind: mcp
+    aliases:
+      - mcp:npm:@modelcontextprotocol/server-filesystem
+    fields:
+      slug: filesystem
+      name: Filesystem
+      category: Storage
+      icon: hard-drive
+      description: "Read and write files in allowed directories."
+      url_unverified: true
+      auth_hint: none
+      docs_url: https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem
+      setup_note: "Needs a self-hosted MCP server; stdio is not supported yet. For isolated file work use the CLI sandbox app."
+      stdio_only: true
+  - key: mcp:repo:github.com/brave/brave-search-mcp-server
+    kind: mcp
+    aliases:
+      - mcp:npm:@brave/brave-search-mcp-server
+    fields:
+      slug: brave_search
+      name: Brave Search
+      category: Search & web
+      icon: search
+      description: "Web and local search."
+      url_unverified: true
+      auth_hint: header
+      docs_url: https://github.com/brave/brave-search-mcp-server
+      setup_note: "Self-host the Brave Search MCP server with your API key and paste its URL."
+  - key: mcp:url:mcp.tavily.com/mcp
+    kind: mcp
+    aliases:
+      - mcp:repo:github.com/tavily-ai/tavily-mcp
+      - mcp:npm:tavily-mcp
+    fields:
+      slug: tavily
+      name: Tavily
+      category: Search & web
+      icon: search
+      description: "Search, extract, and crawl the web."
+      mcp_url: "https://mcp.tavily.com/mcp/"
+      url_unverified: true
+      auth_hint: header
+      auth_note: "Tavily's hosted endpoint expects the API key in the URL, which Jhin does not store; check the docs for header-based auth or self-host."
+      docs_url: https://docs.tavily.com/documentation/mcp
+  - key: mcp:url:mcp.exa.ai/mcp
+    kind: mcp
+    fields:
+      slug: exa
+      name: Exa
+      category: Search & web
+      icon: search
+      description: "Neural web search and content retrieval."
+      mcp_url: https://mcp.exa.ai/mcp
+      url_unverified: true
+      auth_hint: header
+      auth_note: "Check the docs for how the API key is passed; URL query keys are not supported."
+      docs_url: https://docs.exa.ai/reference/exa-mcp
+  - key: mcp:registry:dev.jhin/firecrawl
+    kind: mcp
+    fields:
+      slug: firecrawl
+      name: Firecrawl
+      category: Search & web
+      icon: flame
+      description: "Scrape and crawl websites into clean text."
+      url_unverified: true
+      auth_hint: header
+      auth_note: "Firecrawl's hosted endpoint embeds the API key in the URL; prefer self-hosting with a header token."
+      docs_url: https://docs.firecrawl.dev/mcp-server
+  - key: mcp:url:mcp.context7.com/mcp
+    kind: mcp
+    aliases:
+      - mcp:repo:github.com/upstash/context7
+      - mcp:npm:@upstash/context7-mcp
+    fields:
+      slug: context7
+      name: Context7
+      category: Developer tools
+      icon: book-open
+      description: "Up-to-date library documentation for coding agents."
+      mcp_url: https://mcp.context7.com/mcp
+      transport: streamable_http
+      auth_hint: none
+      auth_note: "Works without a key; add an API key with the custom header option for higher limits."
+      docs_url: https://github.com/upstash/context7
+  - key: mcp:repo:github.com/resend/mcp-send-email
+    kind: mcp
+    aliases:
+      - mcp:npm:mcp-send-email
+    fields:
+      slug: resend
+      name: Resend
+      category: Communication
+      icon: send
+      description: "Send transactional email."
+      url_unverified: true
+      auth_hint: bearer
+      docs_url: https://github.com/resend/mcp-send-email
+      setup_note: "Self-host the Resend MCP server with your API key and paste its URL."
+      stdio_only: true
+  - key: mcp:repo:github.com/twilio-labs/mcp
+    kind: mcp
+    fields:
+      slug: twilio
+      name: Twilio
+      category: Communication
+      icon: phone
+      description: "SMS, voice, and messaging APIs."
+      url_unverified: true
+      auth_hint: bearer
+      docs_url: https://github.com/twilio-labs/mcp
+      setup_note: "Self-host Twilio's MCP server with an API key and paste its URL."
+      stdio_only: true
+  - key: mcp:registry:dev.jhin/discord
+    kind: mcp
+    fields:
+      slug: discord
+      name: Discord
+      category: Communication
+      icon: message-circle
+      description: "Servers, channels, and messages."
+      url_unverified: true
+      auth_hint: bearer
+      docs_url: https://discord.com/developers/docs
+      setup_note: "Self-host a community Discord MCP server with a bot token and paste its URL."
+  - key: mcp:registry:dev.jhin/telegram
+    kind: mcp
+    fields:
+      slug: telegram
+      name: Telegram
+      category: Communication
+      icon: send
+      description: "Chats and messages through a bot."
+      url_unverified: true
+      auth_hint: bearer
+      docs_url: https://core.telegram.org/bots/api
+      setup_note: "Self-host a community Telegram MCP server with a bot token and paste its URL."
+  - key: mcp:url:ai.todoist.net/mcp
+    kind: mcp
+    fields:
+      slug: todoist
+      name: Todoist
+      category: Productivity
+      icon: check-square
+      description: "Tasks, projects, and labels."
+      mcp_url: https://ai.todoist.net/mcp
+      url_unverified: true
+      auth_hint: oauth
+      docs_url: "https://developer.todoist.com/"
+  - key: mcp:registry:dev.jhin/trello
+    kind: mcp
+    fields:
+      slug: trello
+      name: Trello
+      category: Project management
+      icon: kanban
+      description: "Boards, lists, and cards."
+      url_unverified: true
+      auth_hint: bearer
+      docs_url: "https://developer.atlassian.com/cloud/trello/"
+      setup_note: "Self-host a community Trello MCP server with an API key and token, then paste its URL."
+  - key: mcp:registry:dev.jhin/dropbox
+    kind: mcp
+    fields:
+      slug: dropbox
+      name: Dropbox
+      category: Storage
+      icon: folder
+      description: "Files and shared folders."
+      url_unverified: true
+      auth_hint: bearer
+      docs_url: https://www.dropbox.com/developers
+      setup_note: "Self-host a community Dropbox MCP server with an access token and paste its URL."
+  - key: mcp:url:mcp.box.com
+    kind: mcp
+    fields:
+      slug: box
+      name: Box
+      category: Storage
+      icon: folder
+      description: "Files, folders, and AI extraction."
+      mcp_url: https://mcp.box.com
+      url_unverified: true
+      auth_hint: oauth
+      docs_url: "https://developer.box.com/guides/box-mcp/"
+  - key: mcp:url:huggingface.co/mcp
+    kind: mcp
+    fields:
+      slug: huggingface
+      name: Hugging Face
+      category: Developer tools
+      icon: cpu
+      description: "Models, datasets, spaces, and papers."
+      mcp_url: https://huggingface.co/mcp
+      transport: streamable_http
+      auth_hint: bearer
+      auth_note: "Works anonymously; add a Hugging Face token as the bearer token for private resources."
+      docs_url: https://huggingface.co/settings/mcp
+  - key: mcp:url:mcp.deepwiki.com/mcp
+    kind: mcp
+    fields:
+      slug: deepwiki
+      name: DeepWiki
+      category: Documents & knowledge
+      icon: book-open
+      description: "Ask questions about any public GitHub repository."
+      mcp_url: https://mcp.deepwiki.com/mcp
+      transport: streamable_http
+      auth_hint: none
+      docs_url: https://docs.devin.ai/work-with-devin/deepwiki-mcp
+  - key: mcp:url:learn.microsoft.com/api/mcp
+    kind: mcp
+    fields:
+      slug: microsoft_learn
+      name: Microsoft Learn
+      category: Documents & knowledge
+      icon: book-open
+      description: "Official Microsoft and Azure documentation search."
+      mcp_url: https://learn.microsoft.com/api/mcp
+      transport: streamable_http
+      auth_hint: none
+      docs_url: https://learn.microsoft.com/training/support/mcp
+  - key: mcp:url:mcp.neon.tech/mcp
+    kind: mcp
+    fields:
+      slug: neon
+      name: Neon
+      category: Data & infrastructure
+      icon: database
+      description: "Serverless Postgres projects, branches, and SQL."
+      mcp_url: https://mcp.neon.tech/mcp
+      transport: streamable_http
+      auth_hint: oauth
+      auth_note: "Neon's remote server uses OAuth; self-host neon-mcp with an API key for the bearer option."
+      docs_url: https://neon.com/docs/ai/neon-mcp-server
+  - key: mcp:registry:dev.jhin/http
+    kind: mcp
+    fields:
+      slug: http
+      name: Any HTTP API
+      category: Developer tools
+      icon: globe
+      description: "Generic HTTP requests against any API with a fixed base URL — bearer, custom-header, or basic auth."
+      connector_type: http
+      auth_hint: bearer
+      auth_note: "Pick the auth scheme the API expects when connecting; unauthenticated APIs work too."
+  - key: mcp:registry:dev.jhin/fake
+    kind: mcp
+    fields:
+      slug: fake
+      name: Fake MCP (dev)
+      category: Developer tools
+      icon: flask
+      description: "The dev stack's fake MCP server: echo, notes, a destructive tool, an image, and huge text."
+      url_unverified: true
+      auth_hint: bearer
+      auth_note: "Dev-only. Bearer token: fake-mcp-token. In-network URL: http://fake-mcp:8080/mcp"
+      docs_url: https://github.com/jhin-ai/jhin/blob/main/docs/architecture/mcp.md
+      setup_note: "Only available with the dev compose overlay (service fake-mcp)."
+  - key: mcp:registry:dev.jhin/web_search_tavily
+    kind: mcp
+    fields:
+      slug: web_search_tavily
+      name: Web search (Tavily)
+      category: Search & web
+      icon: search
+      description: "Web search plus bounded page fetch for agents, using a Tavily API key."
+      connector_type: web
+      auth_hint: bearer
+      auth_note: "Use a Tavily API key (tvly-…) as the API key."
+      docs_url: "https://docs.tavily.com/"
+      connector_config:
+        search_backend: tavily
+  - key: mcp:registry:dev.jhin/web_search_brave
+    kind: mcp
+    fields:
+      slug: web_search_brave
+      name: Web search (Brave)
+      category: Search & web
+      icon: search
+      description: "Web search plus bounded page fetch for agents, using a Brave Search API key."
+      connector_type: web
+      auth_hint: bearer
+      auth_note: "Use a Brave Search API subscription token as the API key."
+      docs_url: "https://brave.com/search/api/"
+      connector_config:
+        search_backend: brave
+  - key: mcp:registry:dev.jhin/web_search_exa
+    kind: mcp
+    fields:
+      slug: web_search_exa
+      name: Web search (Exa)
+      category: Search & web
+      icon: search
+      description: "Web search plus bounded page fetch for agents, using an Exa API key."
+      connector_type: web
+      auth_hint: bearer
+      auth_note: "Use an Exa API key as the API key."
+      docs_url: "https://docs.exa.ai/"
+      connector_config:
+        search_backend: exa
+  - key: mcp:registry:dev.jhin/fake_websearch
+    kind: mcp
+    fields:
+      slug: fake_websearch
+      name: Fake web search (dev)
+      category: Search & web
+      icon: flask
+      description: "The dev stack's deterministic search + fetch double speaking the Tavily, Brave, and Exa shapes."
+      connector_type: web
+      auth_hint: bearer
+      auth_note: "Dev-only. API key: fake-websearch-token. Base URL: http://fake-websearch:8080"
+      setup_note: "Only available with the dev compose overlay (service fake-websearch)."
+      connector_config:
+        base_url: http://fake-websearch:8080
+        search_backend: tavily
