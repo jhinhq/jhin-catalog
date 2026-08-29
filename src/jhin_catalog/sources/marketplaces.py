@@ -1,11 +1,15 @@
 """Claude Code plugin marketplaces, crawled for the skills they point at.
 
 Reads ``.claude-plugin/marketplace.json`` — and the three cross-agent
-aliases some repositories ship instead — from the seed marketplaces and from
-every repository carrying the ``claude-code-plugin`` topic, resolves each
+aliases some repositories ship instead — from the seed marketplaces, from
+every repository on the curated allowlist, and from every repository
+carrying the ``claude-code-plugin`` topic, resolves each
 ``plugins[].source`` form to a GitHub repository and a plugin root, lists
 that repository's tree once, and emits one :class:`RawRecord` per
-``**/SKILL.md`` blob beneath the root.
+``**/SKILL.md`` blob beneath the root. The allowlist is visited directly
+because most of its repositories never applied the topic: a repository a
+person reviewed must not stay invisible for want of a label its maintainer
+did not think to add.
 
 Pointer, never payload. A ``SKILL.md`` body is agent instructions, and
 vendoring it here would turn an index into a distributor of prompt-injection
@@ -48,6 +52,7 @@ from jhin_catalog.sources.github_topics import (
 )
 from jhin_catalog.types import (
     DEFAULT_SKILL_CATEGORY,
+    ICON_URL_GITHUB_RE,
     MAX_DESCRIPTION_CHARS,
     MAX_TAG_CHARS,
     MAX_TAGS,
@@ -115,9 +120,11 @@ _SKILL_PAYLOAD_KEYS: Final[frozenset[str]] = frozenset(
         "description",
         "docs_url",
         "frontmatter_bytes",
+        "icon_url",
         "license",
         "marketplace",
         "marketplace_repo",
+        "marketplace_reviewed",
         "model_invocable",
         "name",
         "plugin",
@@ -625,6 +632,20 @@ def _assert_pointer_only(payload: JsonObject) -> None:
         _assert_pointer_value(key, payload[key])
 
 
+def _owner_avatar_url(owner: str) -> str:
+    """The GitHub avatar of the repository owner, or ``""`` when it will not do.
+
+    A skill's logo is always its repository owner's avatar — the one image a
+    consumer's icon proxy is willing to dial for a skill — and only when the
+    owner fits GitHub's own username grammar. An owner outside it yields no
+    URL rather than a URL nothing will ever fetch. Lowercased, like the
+    ``repo.owner`` on the same record: GitHub resolves either spelling, and
+    two spellings of one URL would read as a change on every rebuild.
+    """
+    candidate = f"https://github.com/{owner.lower()}.png?size=128"
+    return candidate if ICON_URL_GITHUB_RE.fullmatch(candidate) is not None else ""
+
+
 def _docs_url(*, owner: str, repo: str, skill_path: str) -> str:
     """Where a reader goes to read this ``SKILL.md`` themselves.
 
@@ -643,12 +664,16 @@ def _skill_record(
     commit_sha: str,
     frontmatter: SkillFrontmatter,
     renamed_from: tuple[str, ...],
+    marketplace_reviewed: bool,
 ) -> RawRecord:
     """One skill, as identity and pointers and nothing else.
 
     ``skill_path`` always names a file inside a directory, because that
     directory is what gives the skill an identity distinct from its
-    neighbours in the same repository.
+    neighbours in the same repository. ``marketplace_reviewed`` is the
+    caller's statement that the marketplace this plugin came from is on the
+    reviewed list — a fact about the crawl's configuration, never about
+    anything the repository says for itself.
     """
     suffix = f"/{SKILL_FILENAME}"
     if not skill_path.endswith(suffix):
@@ -672,8 +697,10 @@ def _skill_record(
         "license": frontmatter.license or plugin.license,
         "tags": list(plugin.keywords),
         "docs_url": html_url,
+        "icon_url": _owner_avatar_url(owner),
         "marketplace": plugin.marketplace,
         "marketplace_repo": plugin.marketplace_repo,
+        "marketplace_reviewed": marketplace_reviewed,
         "repo": {
             "host": "github.com",
             "owner": owner.lower(),
@@ -702,10 +729,12 @@ def _skill_record(
 class _Crawl:
     """One run of :meth:`MarketplacesSource.fetch` and the state it carries.
 
-    Repositories are visited in a fixed order — the seeds as listed, then the
-    topic search's results sorted by full name — and each repository's tree
-    is listed once and reused by every plugin that resolves into it, so the
-    same corpus produces the same records in the same order every time.
+    Repositories are visited in a fixed order — the seeds as listed, then
+    the curated allowlist as ``MarketplacePolicy._normalise`` leaves it
+    (lowercased, deduplicated, sorted), then the topic search's results
+    sorted by full name — and each repository's tree is listed once
+    and reused by every plugin that resolves into it, so the same corpus
+    produces the same records in the same order every time.
     """
 
     def __init__(
@@ -739,6 +768,12 @@ class _Crawl:
             frozenset(name.lower() for name in (*limits.marketplace_allowlist, *SEED_REPOS))
             if limits.require_marketplace_allowlist
             else None
+        )
+        # The reviewed subset travels onto every record as a boolean rather
+        # than as a tier, so it is stamped where the marketplace is known —
+        # here — and interpreted nowhere else in this repository.
+        self._reviewed: frozenset[str] = frozenset(
+            name.lower() for name in limits.marketplace_reviewed
         )
         self._rejected: set[str] = set()
         self._digest = RollingDigest()
@@ -966,6 +1001,7 @@ class _Crawl:
                     commit_sha=commit_sha,
                     frontmatter=frontmatter,
                     renamed_from=renamed_from,
+                    marketplace_reviewed=plugin.marketplace_repo.lower() in self._reviewed,
                 )
             )
 
@@ -1031,13 +1067,28 @@ class _Crawl:
         )
 
     async def _repos(self) -> tuple[tuple[str, bool], ...]:
-        """Every repository to visit, in crawl order, flagged seed or not."""
+        """Every repository to visit, in crawl order, flagged seed or not.
+
+        Seeds first, then the curated allowlist, then whatever the topic
+        search finds — deduplicated in that order. The allowlist is visited
+        directly because most of its repositories never applied the
+        discovery topic, and a repository a person reviewed must not stay
+        invisible for want of a label. Only the two seeds are fatal when
+        unreadable; an allowlisted repository that fails to answer is
+        skipped the way a discovered one is.
+        """
         ordered: list[tuple[str, bool]] = []
         seen: set[str] = set()
         for full_name in SEED_REPOS:
             if full_name.lower() not in seen:
                 seen.add(full_name.lower())
                 ordered.append((full_name, True))
+        for full_name in self._limits.marketplace_allowlist:
+            if _split_full_name(full_name) is None:
+                continue
+            if full_name.lower() not in seen:
+                seen.add(full_name.lower())
+                ordered.append((full_name, False))
         for full_name in await self._discover():
             if full_name.lower() not in seen:
                 seen.add(full_name.lower())

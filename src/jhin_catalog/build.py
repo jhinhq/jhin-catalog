@@ -45,6 +45,7 @@ from jhin_catalog.types import (
     CATALOG_ICONS,
     ENTRY_ADAPTER,
     ENTRY_MODELS,
+    ICON_URL_GITHUB_RE,
     KINDS,
     SERVER_SLUG_RE,
     TRUST_RANK,
@@ -99,6 +100,7 @@ _SCHEMA_DESCRIPTION: Final[str] = (
 )
 
 _CURATED_SOURCE_URL: Final[str] = "https://github.com/jhin-dev/jhin-catalog/tree/main/curated"
+_REVIEWED_TRUST: Final[str] = "reviewed"
 _MAX_APP_NAME_CHARS: Final[int] = 60
 _MIN_DENY_REASON_CHARS: Final[int] = 8
 _MAX_DENY_REASON_CHARS: Final[int] = 300
@@ -198,6 +200,12 @@ def load_marketplace_policy(root: Path) -> MarketplacePolicy:
     repository carrying the topic, which is the exact thing the file says it
     prevents. This is the function that makes the declaration load-bearing.
 
+    A row may additionally carry ``trust: reviewed`` — the only legal value —
+    which puts it in ``MarketplacePolicy.reviewed``: skills crawled from that
+    repository are stamped ``marketplace_reviewed``, the flag a consumer
+    elects its own reviewed tier from. Any other ``trust`` spelling fails the
+    build rather than being read as some tier nobody defined.
+
     A missing file, or one with no ``marketplaces`` block, leaves discovery
     open — the same behaviour a repository with no curated policy had before.
     """
@@ -213,6 +221,7 @@ def load_marketplace_policy(root: Path) -> MarketplacePolicy:
         raise CuratedError(f"{_SKILLS_CURATED_FILENAME} has a ``marketplaces`` that is not a map")
 
     allow: set[str] = set()
+    reviewed: set[str] = set()
     for group in ("allow", "community"):
         listed = block.get(group)
         if listed is None:
@@ -227,13 +236,26 @@ def load_marketplace_policy(root: Path) -> MarketplacePolicy:
                     f"{_SKILLS_CURATED_FILENAME}: ``marketplaces.{group}[{index}]`` is not a map"
                 )
             where = f"{_SKILLS_CURATED_FILENAME} marketplaces.{group}[{index}]"
-            allow.add(_required_text(item.get("repo"), where, "repo").lower())
+            repo = _required_text(item.get("repo"), where, "repo").lower()
+            allow.add(repo)
+            trust = item.get("trust")
+            if trust is not None:
+                # ``reviewed`` is the only legal value on purpose: trust is
+                # a claim a person makes by reviewing, and a second spelling
+                # in this file would be a tier nobody defined.
+                if not isinstance(trust, str) or trust.strip() != _REVIEWED_TRUST:
+                    raise CuratedError(f"{where} has a ``trust`` that is not {_REVIEWED_TRUST!r}")
+                reviewed.add(repo)
 
     discovery = block.get("discovery")
     if discovery is not None and not isinstance(discovery, dict):
         raise CuratedError(f"{_SKILLS_CURATED_FILENAME}: ``marketplaces.discovery`` is not a map")
     required = bool((discovery or {}).get("require_allowlist", False))
-    return MarketplacePolicy(allow=tuple(sorted(allow)), require_allowlist=required)
+    return MarketplacePolicy(
+        allow=tuple(sorted(allow)),
+        reviewed=tuple(sorted(reviewed)),
+        require_allowlist=required,
+    )
 
 
 def load_denylist(path: Path) -> tuple[DenylistItem, ...]:
@@ -430,13 +452,16 @@ def is_publishable(entry: CatalogEntry) -> bool:
 
 
 def project_catalog_app(entry: McpEntry) -> JsonObject:
-    """One entry as a Jhin ``CatalogApp``: fifteen keys, omit-when-default.
+    """One entry as a Jhin ``CatalogApp``: sixteen keys, omit-when-default.
 
     A value equal to the ``CatalogApp`` default is left out, which is the
     convention the shipped ``catalog.json`` already follows. ``auth_hint`` is
     the exception and is always written, because "this server wants a bearer
     token" and "nobody has said" are different claims and the reader of the
-    file cannot tell them apart from an absence.
+    file cannot tell them apart from an absence. ``icon_url`` is projected
+    only in the GitHub-avatar shape, because that is the one shape
+    ``CatalogApp`` on the consumer's side accepts; a Smithery icon route
+    reaches a deployment through the synced entry instead.
     """
     app: JsonObject = {
         "slug": entry.slug,
@@ -445,6 +470,8 @@ def project_catalog_app(entry: McpEntry) -> JsonObject:
         "icon": entry.icon,
         "description": summarize(entry.description),
     }
+    if entry.icon_url and ICON_URL_GITHUB_RE.fullmatch(entry.icon_url) is not None:
+        app["icon_url"] = entry.icon_url
     if entry.connector_type is not None:
         app["connector_type"] = entry.connector_type
     if entry.mcp_url is not None:

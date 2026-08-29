@@ -258,6 +258,12 @@ def test_the_shipped_curated_policy_confines_discovery_to_reviewed_repos() -> No
     assert policy.require_allowlist is True
     assert "anthropics/claude-plugins-official" in policy.allow
     assert "anthropics/claude-code" in policy.allow
+    # Every shipped allow row is also marked ``trust: reviewed``: the whole
+    # list was read by a person, and the flag is what lets a consumer elect
+    # its reviewed tier for the skills crawled from it.
+    assert policy.reviewed == policy.allow
+    assert "anthropics/skills" in policy.reviewed
+    assert "wshobson/agents" in policy.reviewed
 
 
 def test_a_repository_root_with_no_curated_file_leaves_discovery_open(tmp_path: Path) -> None:
@@ -268,7 +274,12 @@ def test_a_repository_root_with_no_curated_file_leaves_discovery_open(tmp_path: 
 
 def test_the_policy_reaches_the_crawl_through_the_source_limits() -> None:
     limits = DEFAULT_LIMITS.model_copy(
-        update={"marketplace_allowlist": ("owner/name",), "require_marketplace_allowlist": True}
+        update={
+            "marketplace_allowlist": ("owner/name",),
+            "require_marketplace_allowlist": True,
+            "marketplace_reviewed": ("owner/name",),
+        }
     )
     assert limits.require_marketplace_allowlist
     assert limits.marketplace_allowlist == ("owner/name",)
+    assert limits.marketplace_reviewed == ("owner/name",)

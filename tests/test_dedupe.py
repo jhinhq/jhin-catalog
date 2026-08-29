@@ -403,6 +403,40 @@ def test_deprecated_is_the_logical_or_across_every_source() -> None:
     assert merge_fields(candidates)["deprecated"] is True
 
 
+def test_marketplace_reviewed_is_the_logical_or_across_every_source() -> None:
+    """One reviewed sighting is enough; a candidate that says nothing cannot
+    take the flag away from one that earned it."""
+    candidates = [
+        _named("marketplaces", "a", marketplace_reviewed=False),
+        _named("marketplaces", "b", marketplace_reviewed=True),
+    ]
+    assert merge_fields(candidates)["marketplace_reviewed"] is True
+    assert merge_fields([_named("registry", "a")])["marketplace_reviewed"] is False
+
+
+def test_the_smithery_icon_route_beats_an_owner_avatar_in_the_merge() -> None:
+    """Smithery serves the mark the publisher uploaded; an avatar is the
+    owner's face for everything they ever published — even when the avatar
+    candidate outranks the Smithery one."""
+    candidates = [
+        _named("registry", "a", icon_url="https://github.com/tavily-ai.png?size=128"),
+        _named("smithery", "b", icon_url="https://api.smithery.ai/servers/tavily/icon"),
+    ]
+    assert merge_fields(candidates)["icon_url"] == "https://api.smithery.ai/servers/tavily/icon"
+
+
+def test_icon_url_otherwise_follows_the_ordinary_candidate_precedence() -> None:
+    candidates = [
+        _named("npm", "b", icon_url="https://github.com/acme-example.png?size=128"),
+        _named("registry", "a", icon_url="https://github.com/tavily-ai.png?size=128"),
+    ]
+    assert merge_fields(candidates)["icon_url"] == "https://github.com/tavily-ai.png?size=128"
+
+
+def test_a_component_with_no_icon_url_merges_without_the_key() -> None:
+    assert "icon_url" not in merge_fields([_named("registry", "a")])
+
+
 def test_tags_are_unioned_sorted_and_truncated_to_twenty() -> None:
     candidates = [
         _named("registry", "a", tags=[f"tag-{index:02d}" for index in range(15)]),

@@ -70,6 +70,7 @@ def _candidate(
     frontmatter: SkillFrontmatter | None = None,
     skill_path: str = "skills/quick-note/SKILL.md",
     renamed_from: tuple[str, ...] = (),
+    marketplace_reviewed: bool = False,
 ) -> Candidate:
     """One crawled skill, all the way through to a normalised candidate."""
     record = _skill_record(
@@ -80,6 +81,7 @@ def _candidate(
         commit_sha=COMMIT,
         frontmatter=frontmatter or _frontmatter(),
         renamed_from=renamed_from,
+        marketplace_reviewed=marketplace_reviewed,
     )
     candidate = normalize_marketplace_skill(record)
     assert candidate is not None
@@ -154,6 +156,7 @@ def test_a_frontmatter_block_is_still_read_when_a_record_nests_one() -> None:
         commit_sha=COMMIT,
         frontmatter=_frontmatter(license=""),
         renamed_from=(),
+        marketplace_reviewed=False,
     )
     payload = dict(record.payload)
     payload.pop("license")
@@ -178,6 +181,46 @@ def test_the_whole_candidate_builds_into_a_validated_entry() -> None:
     assert entry.tags == ("notes", "writing")
 
 
+def test_a_reviewed_marketplace_stamps_its_flag_all_the_way_onto_the_entry() -> None:
+    """The whole reviewed pipeline: crawl flag → candidate → merged → entry.
+
+    The flag is what a consumer elects its own "reviewed" tier from, so a
+    loss anywhere along this seam silently demotes every reviewed skill back
+    to the community pile.
+    """
+    from jhin_catalog.build import _provisional_slug
+    from jhin_catalog.dedupe import merge_candidates
+    from jhin_catalog.normalize import build_entry
+
+    merged = merge_candidates([_candidate(marketplace_reviewed=True)])
+    entry = build_entry(merged[0], popularity=0.0, slug=_provisional_slug(merged[0]))
+    assert entry.marketplace_reviewed is True
+    assert entry.trust_tier == "indexed"  # the wire tier itself never moves
+
+
+def test_an_unreviewed_marketplace_leaves_the_flag_off_the_entry() -> None:
+    from jhin_catalog.build import _provisional_slug
+    from jhin_catalog.dedupe import merge_candidates
+    from jhin_catalog.normalize import build_entry
+
+    merged = merge_candidates([_candidate(marketplace_reviewed=False)])
+    entry = build_entry(merged[0], popularity=0.0, slug=_provisional_slug(merged[0]))
+    assert entry.marketplace_reviewed is False
+
+
+def test_a_skill_carries_its_repository_owners_avatar_as_its_icon_url() -> None:
+    """Rule 2 of the icon election, end to end from the crawl to the entry."""
+    from jhin_catalog.build import _provisional_slug
+    from jhin_catalog.dedupe import merge_candidates
+    from jhin_catalog.normalize import build_entry
+
+    candidate = _candidate()
+    assert candidate.fields["icon_url"] == "https://github.com/anthropics.png?size=128"
+    merged = merge_candidates([candidate])
+    entry = build_entry(merged[0], popularity=0.0, slug=_provisional_slug(merged[0]))
+    assert entry.icon_url == "https://github.com/anthropics.png?size=128"
+
+
 # --- the crawl's own bounds ------------------------------------------------
 
 
@@ -199,6 +242,7 @@ def test_a_declared_skill_path_too_long_for_its_url_never_reaches_a_record() -> 
             commit_sha=COMMIT,
             frontmatter=_frontmatter(),
             renamed_from=(),
+            marketplace_reviewed=False,
         )
 
 

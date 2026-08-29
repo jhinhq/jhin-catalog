@@ -460,6 +460,93 @@ async def test_an_unreviewed_repository_is_crawled_when_no_allowlist_is_required
     assert any("stranger/plugins" in url for url in requested)
 
 
+async def test_an_allowlisted_repository_without_the_topic_is_visited_directly(
+    load_fixture: FixtureLoader, mock_client: ClientFactory, no_sleep: Sleeper
+) -> None:
+    """Most of the allowlist never applied ``topic:claude-code-plugin``.
+
+    Until the crawl visited the allowlist directly, a repository a person had
+    reviewed stayed invisible unless its maintainer happened to add the
+    discovery label — the topic search here returns nothing, and the
+    repository must be read anyway.
+    """
+    limits = DEFAULT_LIMITS.model_copy(
+        update={
+            "marketplace_allowlist": ("acme-example/community",),
+            "require_marketplace_allowlist": True,
+        }
+    )
+    requested: list[str] = []
+    async with mock_client(_crawl_handler(load_fixture, requested)) as client:
+        fetched = await MarketplacesSource().fetch(client, limits=limits, sleep=no_sleep)
+
+    assert any("acme-example/community" in url for url in requested)
+    repos = {record.payload["marketplace_repo"] for record in fetched.records}
+    assert "acme-example/community" in repos
+
+
+async def test_an_allowlisted_repository_that_fails_is_skipped_not_fatal(
+    load_fixture: FixtureLoader, mock_client: ClientFactory, no_sleep: Sleeper
+) -> None:
+    """Only the two seeds are load-bearing; a flaky allowlisted repo costs
+    itself, exactly as a discovered one does."""
+    inner = _crawl_handler(load_fixture, [])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "broken-example" in request.url.path:
+            return httpx.Response(500, text="upstream broke")
+        return inner(request)
+
+    limits = DEFAULT_LIMITS.model_copy(
+        update={
+            "marketplace_allowlist": ("broken-example/marketplace",),
+            "require_marketplace_allowlist": True,
+        }
+    )
+    async with mock_client(handler) as client:
+        fetched = await MarketplacesSource().fetch(client, limits=limits, sleep=no_sleep)
+    assert fetched.records
+
+
+async def test_skills_from_a_reviewed_marketplace_carry_the_flag_and_others_do_not(
+    load_fixture: FixtureLoader, mock_client: ClientFactory, no_sleep: Sleeper
+) -> None:
+    """``trust: reviewed`` travels as a boolean stamped where the marketplace
+    is known — a fact about the crawl's configuration, never about anything
+    the repository says for itself."""
+    limits = DEFAULT_LIMITS.model_copy(
+        update={
+            "marketplace_allowlist": ("acme-example/community",),
+            "require_marketplace_allowlist": True,
+            "marketplace_reviewed": ("acme-example/community",),
+        }
+    )
+    requested: list[str] = []
+    async with mock_client(_crawl_handler(load_fixture, requested)) as client:
+        fetched = await MarketplacesSource().fetch(client, limits=limits, sleep=no_sleep)
+
+    flags = {
+        _text(record.payload["marketplace_repo"]): record.payload["marketplace_reviewed"]
+        for record in fetched.records
+    }
+    assert flags["acme-example/community"] is True
+    assert flags["anthropics/claude-plugins-official"] is False
+
+
+async def test_every_record_names_its_repository_owners_avatar_as_icon_url(
+    load_fixture: FixtureLoader, mock_client: ClientFactory, no_sleep: Sleeper
+) -> None:
+    requested: list[str] = []
+    async with mock_client(_crawl_handler(load_fixture, requested)) as client:
+        fetched = await MarketplacesSource().fetch(client, limits=DEFAULT_LIMITS, sleep=no_sleep)
+
+    assert fetched.records
+    for record in fetched.records:
+        repo = _object(record.payload["repo"])
+        icon_url = _text(record.payload["icon_url"])
+        assert icon_url == f"https://github.com/{_text(repo['owner'])}.png?size=128"
+
+
 async def test_an_unreviewed_repository_is_never_fetched_under_the_allowlist(
     load_fixture: FixtureLoader, mock_client: ClientFactory, no_sleep: Sleeper
 ) -> None:

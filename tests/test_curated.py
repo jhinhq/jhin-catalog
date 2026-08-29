@@ -175,16 +175,34 @@ def test_a_missing_endpoint_is_always_marked_unverified(repo_root: Path) -> None
         assert fields["url_unverified"] is True
 
 
-def test_the_marketplace_allowlist_is_seeded_with_both_first_party_repos(
+def test_the_marketplace_allowlist_is_the_nine_reviewed_collections(
     repo_root: Path,
 ) -> None:
+    """The shipped list: both seeds plus the seven reviewed skill libraries.
+
+    Order matters — the crawl visits the allowlist in committed order after
+    the seeds — and every row carries the accountability triple: a named
+    maintainer, review notes a person can audit, and the ``trust: reviewed``
+    mark that lets a consumer elect its reviewed tier.
+    """
     marketplaces = _document(repo_root, "skills.yaml")["marketplaces"]
     allowed = [item["repo"] for item in marketplaces["allow"]]
-    assert allowed == ["anthropics/claude-plugins-official", "anthropics/claude-code"]
+    assert allowed == [
+        "anthropics/claude-plugins-official",
+        "anthropics/claude-code",
+        "anthropics/skills",
+        "netresearch/claude-code-marketplace",
+        "obra/superpowers",
+        "mattpocock/skills",
+        "addyosmani/agent-skills",
+        "kepano/obsidian-skills",
+        "wshobson/agents",
+    ]
     assert marketplaces["discovery"]["require_allowlist"] is True
     for item in marketplaces["allow"]:
         assert item["maintainer"]
         assert len(item["notes"]) >= 40
+        assert item["trust"] == "reviewed"
 
 
 def test_every_allowlisted_marketplace_is_named_owner_slash_repo(repo_root: Path) -> None:

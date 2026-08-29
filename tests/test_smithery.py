@@ -9,6 +9,7 @@ from typing import Protocol
 import httpx
 import pytest
 
+from jhin_catalog.http import FetchError
 from jhin_catalog.normalize import normalize_smithery
 from jhin_catalog.sources.base import DEFAULT_LIMITS, SourceError
 from jhin_catalog.sources.smithery import (
@@ -257,6 +258,101 @@ async def test_each_record_points_at_the_page_a_person_can_read(
     for record in fetched.records:
         assert record.url.startswith("https://smithery.ai/server/")
         assert record.source_id == "smithery"
+
+
+def _paged_handler(
+    load_fixture: FixtureLoader,
+    *,
+    total_pages: int,
+    respond: Callable[[int, int], httpx.Response | None],
+) -> Callable[[httpx.Request], httpx.Response]:
+    """A list walk of ``total_pages`` whose later pages the test scripts.
+
+    ``respond`` sees ``(page, calls_so_far_for_that_page)`` and either returns
+    a response or ``None`` for "serve the fixture page as usual".
+    """
+    calls: dict[int, int] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        page = int(request.url.params.get("page", "1"))
+        calls[page] = calls.get(page, 0) + 1
+        scripted = respond(page, calls[page])
+        if scripted is not None:
+            return scripted
+        payload = _object(load_fixture("smithery_list.json"))
+        payload["pagination"] = {
+            "currentPage": page,
+            "pageSize": 100,
+            "totalPages": total_pages,
+            "totalCount": 5 * total_pages,
+        }
+        return httpx.Response(200, json=payload)
+
+    return handler
+
+
+async def test_an_exhausted_throttle_cuts_the_list_walk_short_rather_than_the_build(
+    load_fixture: FixtureLoader, mock_client: ClientFactory, no_sleep: RecordingSleep
+) -> None:
+    """A 429 that outlives every retry ends the walk, not the crawl.
+
+    Declaring it fatal threw away every page already read — and, at the
+    build level, every other source's work — over rate limiting, which is
+    the expected end of a large unauthenticated crawl rather than a broken
+    upstream. ``github_topics`` degrades the same way on its 403, and the
+    diff gate stays the judge of whether a short crawl is publishable.
+    """
+
+    def respond(page: int, _calls: int) -> httpx.Response | None:
+        if page > 1:
+            return httpx.Response(429, json={"error": "rate limited"})
+        return None
+
+    limits = DEFAULT_LIMITS.model_copy(update={"detail_top_n": 0})
+    handler = _paged_handler(load_fixture, total_pages=3, respond=respond)
+    async with mock_client(handler) as client:
+        fetched = await SmitherySource().fetch(client, limits=limits, sleep=no_sleep)
+
+    # The fixture page holds five rows, two of them unlisted or inactive.
+    assert fetched.entry_count == 3
+    assert fetched.page_count == 1
+    # ``fetch`` spent its own retries before the walk gave up.
+    assert no_sleep.delays == [0.5, 1.0, 2.0, 4.0]
+
+
+async def test_a_throttle_that_clears_within_the_retries_costs_nothing(
+    load_fixture: FixtureLoader, mock_client: ClientFactory, no_sleep: RecordingSleep
+) -> None:
+    """The shared retry inside ``fetch`` still absorbs a transient 429."""
+
+    def respond(page: int, calls: int) -> httpx.Response | None:
+        if page == 2 and calls < 3:
+            return httpx.Response(429, json={"error": "rate limited"})
+        return None
+
+    limits = DEFAULT_LIMITS.model_copy(update={"detail_top_n": 0})
+    handler = _paged_handler(load_fixture, total_pages=2, respond=respond)
+    async with mock_client(handler) as client:
+        fetched = await SmitherySource().fetch(client, limits=limits, sleep=no_sleep)
+
+    assert fetched.page_count == 2
+
+
+async def test_a_hard_failure_on_the_list_walk_is_still_a_fetch_fault(
+    load_fixture: FixtureLoader, mock_client: ClientFactory, no_sleep: RecordingSleep
+) -> None:
+    """Only the throttle degrades; a broken upstream still fails the crawl,
+    because a 500 mid-walk is a fault someone should see, not a ceiling."""
+
+    def respond(page: int, _calls: int) -> httpx.Response | None:
+        if page > 1:
+            return httpx.Response(404, json={"error": "gone"})
+        return None
+
+    handler = _paged_handler(load_fixture, total_pages=3, respond=respond)
+    async with mock_client(handler) as client:
+        with pytest.raises(FetchError):
+            await SmitherySource().fetch(client, limits=DEFAULT_LIMITS, sleep=no_sleep)
 
 
 async def test_an_empty_page_below_the_last_one_is_a_fetch_fault(

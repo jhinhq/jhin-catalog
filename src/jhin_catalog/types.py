@@ -113,6 +113,19 @@ CONNECTOR_TYPES: Final[frozenset[str]] = frozenset(
 )
 DEFAULT_SKILL_CATEGORY: Final[str] = "General"
 
+# The only two URL shapes ``icon_url`` may hold. The bound is the SSRF
+# posture: a consumer's icon proxy dials whatever this field names, so the
+# field names nothing but Smithery's own icon route and GitHub's owner
+# avatar — two hosts a person has reviewed, not whatever a publisher typed
+# into a manifest. Anchored and full-matched, so ``api.smithery.ai.evil.com``
+# and a path that wanders off ``/icon`` both fail.
+ICON_URL_SMITHERY_RE: Final[re.Pattern[str]] = re.compile(
+    r"^https://api\.smithery\.ai/servers/[^/?#\s]+(/[^/?#\s]+)*/icon$"
+)
+ICON_URL_GITHUB_RE: Final[re.Pattern[str]] = re.compile(
+    r"^https://github\.com/[A-Za-z0-9-]{1,39}\.png\?size=128$"
+)
+
 SERVER_SLUG_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,32}$")
 SKILL_NAME_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
 SHA1_RE: Final[re.Pattern[str]] = re.compile(r"^[a-f0-9]{40}$")
@@ -217,6 +230,15 @@ _MCP_URL_SCHEMA: Final[dict[str, Any]] = {
 _SKILL_NAME_SCHEMA: Final[dict[str, Any]] = {
     "pattern": SKILL_NAME_RE.pattern,
     "description": "The skill's own name, as its ``SKILL.md`` frontmatter declares it.",
+}
+_ICON_URL_SCHEMA: Final[dict[str, Any]] = {
+    "maxLength": MAX_URL_CHARS,
+    "description": (
+        "The upstream image a deployment's icon proxy may fetch for this record: "
+        "a Smithery server icon or a GitHub owner avatar, and nothing else. "
+        '``""`` when no logo can be named. Consumers re-validate and proxy this '
+        "URL server-side; it is never handed to a browser."
+    ),
 }
 
 
@@ -461,6 +483,13 @@ class _EntryBase(BaseModel):
     description: str = Field(max_length=MAX_DESCRIPTION_CHARS)
     homepage: str = ""
     docs_url: str = ""
+    icon_url: str = Field(default="", json_schema_extra=_ICON_URL_SCHEMA)
+    # Whether the marketplace this record was crawled from is one a person
+    # marked ``trust: reviewed`` in ``curated/skills.yaml``. An additive flag
+    # rather than a trust tier, so an old consumer validating ``trust_tier``
+    # against its own Literal keeps working; the consumer elects its own tier
+    # from it.
+    marketplace_reviewed: bool = False
     trust_tier: Literal["curated", "registry_verified", "smithery_verified", "indexed"]
     popularity: float = Field(default=0.0, ge=0.0, le=1.0)
     popularity_signals: PopularitySignals = PopularitySignals()
@@ -510,6 +539,26 @@ class _EntryBase(BaseModel):
     @classmethod
     def _check_docs_url(cls, value: str) -> str:
         return _https_url(value, "docs_url", allow_http=True)
+
+    @field_validator("icon_url")
+    @classmethod
+    def _check_icon_url(cls, value: str) -> str:
+        """Checked and rejected, never coerced: a bad icon URL is a pipeline bug.
+
+        The election in ``normalize`` only ever constructs the two permitted
+        shapes, so anything else arriving here means code upstream drifted —
+        or a curated file tried to point the icon proxy somewhere new, which
+        is a decision for this validator, not for a YAML edit.
+        """
+        if value == "":
+            return value
+        _require(len(value) <= MAX_URL_CHARS, f"icon_url exceeds {MAX_URL_CHARS} characters")
+        _require(
+            ICON_URL_SMITHERY_RE.fullmatch(value) is not None
+            or ICON_URL_GITHUB_RE.fullmatch(value) is not None,
+            "icon_url must be a Smithery server icon or a GitHub owner avatar URL",
+        )
+        return value
 
     @field_validator("popularity")
     @classmethod
@@ -906,9 +955,13 @@ class MarketplacePolicy(BaseModel):
     model_config = _MODEL_CONFIG
 
     allow: tuple[str, ...] = ()
+    # The subset of ``allow`` a person marked ``trust: reviewed``: skills
+    # crawled from these repositories carry ``marketplace_reviewed`` on their
+    # records, which is what a consumer elects its own reviewed tier from.
+    reviewed: tuple[str, ...] = ()
     require_allowlist: bool = False
 
-    @field_validator("allow")
+    @field_validator("allow", "reviewed")
     @classmethod
     def _normalise(cls, value: tuple[str, ...]) -> tuple[str, ...]:
         return tuple(sorted({item.strip().lower() for item in value if item.strip()}))

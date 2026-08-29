@@ -8,9 +8,12 @@ servers, and then details the busiest ``detail_top_n`` qualified names to
 learn their transports and tool counts. Details run concurrently under a
 small semaphore and degrade one at a time — a detail that 404s or fails to
 parse leaves its summary record intact, without ``_detail``, rather than
-losing the server. Only connection shape survives: ``configSchema`` is
-pruned to its property names and each tool to its ``name``, so a schema
-body never enters a record.
+losing the server. A list page still throttled after every retry cuts the
+walk short with a logged skip count instead of failing the whole build, the
+same way ``github_topics`` ends a rate-limited topic; the diff gate remains
+the judge of whether a short crawl is publishable. Only connection shape
+survives: ``configSchema`` is pruned to its property names and each tool to
+its ``name``, so a schema body never enters a record.
 """
 
 from __future__ import annotations
@@ -51,6 +54,13 @@ _REQUEST_HEADERS: Final[Mapping[str, str]] = {"accept": "application/json"}
 # overlapping, but a wide fan-out is how an unauthenticated client earns a
 # 429 and turns a cheap enrichment into a fetch fault.
 _DETAIL_CONCURRENCY: Final[int] = 8
+
+# The status Smithery answers with when an unauthenticated walk outpaces it.
+# ``http.fetch`` already retries it on the shared backoff, honouring any
+# ``Retry-After``; a page that is *still* refused after every retry ends the
+# walk rather than the build, because every earlier page's servers are real
+# data and the diff gate — not a throttle — decides what is publishable.
+_THROTTLED_STATUS: Final[int] = 429
 
 # The detail route answers with a fixed object. ``parse_detail`` projects
 # onto exactly these names, so an upstream addition cannot enlarge what the
@@ -178,10 +188,11 @@ class SmitherySource(Source):
         """Crawl every seeded page, then detail the busiest servers.
 
         The list walk ends on the last page Smithery reports, on
-        ``limits.max_pages``, or on ``limits.max_records``, and each early
-        end is logged with the number of servers it left behind. The detail
-        pass then runs over the top ``limits.detail_top_n`` qualified names
-        by ``(-useCount, qualifiedName)`` and requests them in that fixed
+        ``limits.max_pages``, on ``limits.max_records``, or on a page still
+        answering 429 after every retry, and each early end is logged with
+        the number of servers it left behind. The detail pass then runs over
+        the top ``limits.detail_top_n`` qualified names by
+        ``(-useCount, qualifiedName)`` and requests them in that fixed
         order, so the rolling hash never depends on which response landed
         first. ``page_count`` counts every response the hash covers, list
         pages and details alike.
@@ -211,13 +222,34 @@ class SmitherySource(Source):
                 break
             if bucket is not None:
                 await bucket.acquire()
-            payload, result = await fetch_json(
-                client,
-                _LIST_URL,
-                params={"page": page, "pageSize": page_size, "seed": SEED},
-                headers=_REQUEST_HEADERS,
-                sleep=sleep,
-            )
+            try:
+                payload, result = await fetch_json(
+                    client,
+                    _LIST_URL,
+                    params={"page": page, "pageSize": page_size, "seed": SEED},
+                    headers=_REQUEST_HEADERS,
+                    sleep=sleep,
+                )
+            except FetchError as exc:
+                # An exhausted throttle ends the walk, not the build. The
+                # retries inside ``fetch`` have already spent the shared
+                # backoff and any ``Retry-After``; declaring the survivor
+                # fatal here used to throw away every page already read —
+                # and every other source's work — over rate limiting, which
+                # is the expected end of a large unauthenticated crawl
+                # rather than a broken upstream. ``github_topics`` degrades
+                # the same way, and the diff gate stays the thing that
+                # decides whether a short crawl is publishable.
+                if exc.status_code != _THROTTLED_STATUS:
+                    raise
+                _LOG.warning(
+                    "smithery: page %d of %d was still throttled after every retry; the "
+                    "walk stops here and about %d servers were not reached",
+                    page,
+                    total_pages,
+                    max(total_count - len(summaries) - dropped, 0),
+                )
+                break
             digest.update(result.body)
             page_count += 1
             parsed = parse_page(payload, url=result.url)

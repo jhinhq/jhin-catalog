@@ -11,6 +11,8 @@ from jhin_catalog.normalize import (
     choose_category,
     choose_icon,
     collapse,
+    elect_icon_url,
+    github_avatar_url,
     name_key,
     parse_repo_url,
     repo_key,
@@ -261,6 +263,53 @@ def test_choose_icon_falls_back_to_the_category_when_the_slug_is_unknown() -> No
     assert choose_icon(slug="nobody_has_this_slug", category="Automation") == "zap"
 
 
+# --- icon URL election ------------------------------------------------------
+
+
+_GITHUB_REPO: JsonObject = {
+    "host": "github.com",
+    "owner": "tavily-ai",
+    "repo": "tavily-mcp",
+    "subpath": "",
+}
+
+
+def test_a_smithery_sourced_entry_elects_smitherys_own_icon_route() -> None:
+    elected = elect_icon_url({"smithery_qualified_name": "@acme-example/notes"})
+    assert elected == "https://api.smithery.ai/servers/@acme-example/notes/icon"
+
+
+def test_the_smithery_route_beats_the_avatar_when_an_entry_holds_both() -> None:
+    elected = elect_icon_url({"smithery_qualified_name": "exa", "repo": _GITHUB_REPO})
+    assert elected == "https://api.smithery.ai/servers/exa/icon"
+
+
+def test_a_github_repository_elects_its_owners_avatar() -> None:
+    assert elect_icon_url({"repo": _GITHUB_REPO}) == "https://github.com/tavily-ai.png?size=128"
+
+
+def test_a_registry_or_npm_only_record_elects_nothing() -> None:
+    assert elect_icon_url({"registry_name": "io.github.a/b", "npm_package": "b"}) == ""
+
+
+def test_a_non_github_repository_elects_nothing() -> None:
+    repo: JsonObject = {"host": "gitlab.com", "owner": "acme", "repo": "thing", "subpath": ""}
+    assert elect_icon_url({"repo": repo}) == ""
+
+
+def test_an_unusable_smithery_name_falls_through_to_the_avatar() -> None:
+    """Upstream noise loses the icon, never the entry."""
+    elected = elect_icon_url({"smithery_qualified_name": "spaced name", "repo": _GITHUB_REPO})
+    assert elected == "https://github.com/tavily-ai.png?size=128"
+
+
+def test_github_avatar_url_refuses_an_owner_outside_githubs_grammar() -> None:
+    assert github_avatar_url("acme-example") == "https://github.com/acme-example.png?size=128"
+    assert github_avatar_url("dotted.owner") == ""
+    assert github_avatar_url("under_score") == ""
+    assert github_avatar_url("a" * 40) == ""
+
+
 # --- building the final entry ----------------------------------------------
 
 
@@ -346,3 +395,25 @@ def test_build_entry_rejects_a_field_the_model_does_not_have() -> None:
     merged = _merged(fields=_base_fields(iconUrl="https://example.com/icon.png"))
     with pytest.raises(NormalizeError):
         build_entry(merged, popularity=0.0, slug="example")
+
+
+def test_build_entry_recomputes_icon_url_rather_than_trusting_the_merge() -> None:
+    """The election is derived, like ``stdio_only``: a merged value from a
+    source that never saw the Smithery name would otherwise stand forever."""
+    merged = _merged(
+        fields=_base_fields(
+            icon_url="https://github.com/tavily-ai.png?size=128",
+            smithery_qualified_name="tavily",
+        )
+    )
+    entry = build_entry(merged, popularity=0.0, slug="tavily")
+    assert entry.icon_url == "https://api.smithery.ai/servers/tavily/icon"
+
+
+def test_build_entry_elects_no_icon_url_for_a_registry_only_record() -> None:
+    entry = build_entry(
+        _merged(fields=_base_fields(registry_name="io.github.a/b")),
+        popularity=0.0,
+        slug="example",
+    )
+    assert entry.icon_url == ""

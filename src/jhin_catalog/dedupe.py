@@ -86,7 +86,9 @@ _MERGE_EXCLUDED: Final[frozenset[str]] = frozenset(
         "canonical_key",
         "curated_fields",
         "deprecated",
+        "icon_url",
         "kind",
+        "marketplace_reviewed",
         "packages",
         "popularity",
         "popularity_signals",
@@ -213,10 +215,11 @@ def merge_fields(candidates: Sequence[Candidate]) -> JsonObject:
     ``None``, not empty, and — for a boolean — not ``False``. The asymmetry on
     booleans is deliberate: every flag in the schema is an assertion, so a
     source that says nothing must not overwrite a source that says something.
-    Five fields have their own rules: ``deprecated`` is a logical OR,
-    ``tags`` is a union, ``packages`` and ``remotes`` are unions on their
-    identity, and the derived flags are dropped for ``build_entry`` to
-    recompute.
+    Seven fields have their own rules: ``deprecated`` and
+    ``marketplace_reviewed`` are logical ORs, ``icon_url`` prefers the
+    Smithery icon route over an owner avatar, ``tags`` is a union,
+    ``packages`` and ``remotes`` are unions on their identity, and the
+    derived flags are dropped for ``build_entry`` to recompute.
     """
     ordered = sorted(candidates, key=_candidate_order)
     merged: JsonObject = {}
@@ -229,6 +232,12 @@ def merge_fields(candidates: Sequence[Candidate]) -> JsonObject:
                 merged[name] = value
 
     merged["deprecated"] = any(candidate.fields.get("deprecated") is True for candidate in ordered)
+    merged["marketplace_reviewed"] = any(
+        candidate.fields.get("marketplace_reviewed") is True for candidate in ordered
+    )
+    icon_url = _merge_icon_url(ordered)
+    if icon_url:
+        merged["icon_url"] = icon_url
     tags = _merge_tags(ordered)
     if tags:
         merged["tags"] = tags
@@ -663,6 +672,24 @@ def _candidate_order(candidate: Candidate) -> tuple[int, str, str]:
         candidate.upstream_id,
         candidate.primary_key,
     )
+
+
+def _merge_icon_url(candidates: Sequence[Candidate]) -> str:
+    """The one icon URL a component keeps across its candidates.
+
+    A Smithery icon route beats an owner avatar, because Smithery serves the
+    mark the server's own publisher uploaded while an avatar is the owner's
+    face for everything they have ever published. With no Smithery value the
+    first non-empty URL in candidate order stands, which is the same
+    precedence every other merged field follows.
+    """
+    values = [
+        value for candidate in candidates if (value := _text(candidate.fields.get("icon_url")))
+    ]
+    for value in values:
+        if "api.smithery.ai" in value:
+            return value
+    return values[0] if values else ""
 
 
 def _merge_tags(candidates: Sequence[Candidate]) -> list[JsonValue]:

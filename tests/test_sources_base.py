@@ -50,6 +50,9 @@ def test_the_default_limits_are_the_documented_ones() -> None:
     assert DEFAULT_LIMITS.detail_top_n == 500
     assert DEFAULT_LIMITS.github_token == ""
     assert DEFAULT_LIMITS.requests_per_minute == 0
+    assert DEFAULT_LIMITS.marketplace_allowlist == ()
+    assert DEFAULT_LIMITS.require_marketplace_allowlist is False
+    assert DEFAULT_LIMITS.marketplace_reviewed == ()
 
 
 def test_no_token_is_the_default_so_an_unconfigured_crawl_stays_anonymous() -> None:

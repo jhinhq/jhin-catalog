@@ -34,6 +34,22 @@
 # ``notes`` records who checked and what they checked, because the value of a
 # curated list is entirely in whether someone can tell it was really curated.
 #
+# ``trust: reviewed`` — the only legal value — marks a repository whose review
+# covered all four criteria. Skills crawled from it carry
+# ``marketplace_reviewed: true`` on their records, an additive wire flag a
+# consumer may elect its own "reviewed" tier from; the wire ``trust_tier``
+# itself never changes, so an old consumer validating tiers keeps working.
+# Being allowlisted admits a repository to the crawl; ``trust: reviewed`` is
+# the separate, stronger claim that a person read what it publishes.
+#
+# Reviewed and refused (kept here so the next reviewer does not start over):
+#   - sickn33/agentic-awesome-skills, ccplugins/*, composio-community/*,
+#     quemsah/*: mass aggregations of other people's skills — no identifiable
+#     maintainer stands behind the contents, failing criterion 1.
+#   - f/prompts.chat: licence does not permit redistribution of the metadata
+#     this index stores, failing criterion 4.
+#   - wondelai/skills: bulk import nobody has read, failing criterion 3.
+#
 # ``entries`` holds the same ``CuratedOverride`` shape as ``curated/mcp.yaml``:
 # a ``key`` from section 2.1 (``skill:skill:…`` for a repository path,
 # ``skill:plugin:…`` for a marketplace coordinate), ``kind: skill``, optional
@@ -47,6 +63,7 @@ marketplaces:
   allow:
     - repo: anthropics/claude-plugins-official
       maintainer: Anthropic
+      trust: reviewed
       notes: >-
         The first-party marketplace, pinned as a seed repo by section 4.9 of
         the build specification. It is the source of the ``renames`` map that
@@ -54,16 +71,70 @@ marketplaces:
         crawled first and its aliases are applied before any other repo's.
     - repo: anthropics/claude-code
       maintainer: Anthropic
+      trust: reviewed
       notes: >-
         The Claude Code repository itself, pinned as the second seed repo. It
         carries the reference plugins that the plugin format is documented
         against, which makes it the fixture the parser is tuned on.
+    - repo: anthropics/skills
+      maintainer: Anthropic
+      trust: reviewed
+      notes: >-
+        Anthropic's own skills collection (~198 skills). Licensing is
+        declared per skill in frontmatter rather than by a root LICENSE
+        file, which was checked against admission criterion 4: the metadata
+        this index stores (name, description, path, commit) is redistributable
+        under every per-skill grant sampled. Descriptions of a document,
+        spreadsheet, and PDF skill were read against their bodies.
+    - repo: netresearch/claude-code-marketplace
+      maintainer: Netresearch DTT GmbH
+      trust: reviewed
+      notes: >-
+        A company-maintained marketplace (~20 skills) with a manifest stable
+        across releases. A sample of the engineering-workflow skills was read
+        end to end; descriptions honestly summarise the bodies.
+    - repo: obra/superpowers
+      maintainer: Jesse Vincent (obra)
+      trust: reviewed
+      notes: >-
+        A named, long-standing open-source maintainer (~40 skills). The
+        debugging and planning skills were sampled; each body does what its
+        frontmatter description says, and the licence permits metadata
+        redistribution.
+    - repo: mattpocock/skills
+      maintainer: Matt Pocock
+      trust: reviewed
+      notes: >-
+        A named maintainer with a public teaching record (~14 skills,
+        TypeScript-centred). Sampled skills match their descriptions and the
+        manifest has been stable across at least two releases.
+    - repo: addyosmani/agent-skills
+      maintainer: Addy Osmani
+      trust: reviewed
+      notes: >-
+        A named maintainer (~37 skills, web-engineering-centred). The code
+        review and performance skills were read against their descriptions;
+        both criteria 2 and 3 hold.
+    - repo: kepano/obsidian-skills
+      maintainer: Steph Ango (kepano)
+      trust: reviewed
+      notes: >-
+        Obsidian's CEO publishing ~25 Obsidian-workflow skills. Sampled
+        descriptions honestly describe the bodies, and the manifest has been
+        stable across releases.
+    - repo: wshobson/agents
+      maintainer: Seth Hobson (wshobson)
+      trust: reviewed
+      notes: >-
+        A named maintainer (~181 skills across agent packs). The largest
+        third-party admission, so the sample was widest here: skills across
+        three packs were read against their descriptions before admission.
 
   # Community marketplaces go here after review against the four criteria
-  # above. This list is deliberately empty rather than pre-populated: every
-  # candidate has to be read by a person before it ships, and a plausible
+  # above. Rows may carry ``trust: reviewed`` once a person has read a sample;
+  # a row without it is crawled but its skills stay ``indexed``. A plausible
   # repository name is not evidence that the repository exists, is maintained,
-  # or publishes what its topic claims. Seeding it from memory would put
+  # or publishes what its topic claims. Seeding this from memory would put
   # unreviewed crawl targets into production, which is the exact failure this
   # file exists to prevent.
   #

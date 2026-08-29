@@ -145,6 +145,12 @@
           ],
           "type": "string"
         },
+        "icon_url": {
+          "default": "",
+          "description": "The upstream image a deployment's icon proxy may fetch for this record: a Smithery server icon or a GitHub owner avatar, and nothing else. ``\"\"`` when no logo can be named. Consumers re-validate and proxy this URL server-side; it is never handed to a browser.",
+          "maxLength": 512,
+          "type": "string"
+        },
         "kind": {
           "const": "mcp",
           "type": "string"
@@ -153,6 +159,10 @@
           "default": "",
           "maxLength": 64,
           "type": "string"
+        },
+        "marketplace_reviewed": {
+          "default": false,
+          "type": "boolean"
         },
         "mcp_url": {
           "anyOf": [
@@ -319,8 +329,10 @@
         "docs_url",
         "homepage",
         "icon",
+        "icon_url",
         "kind",
         "license",
+        "marketplace_reviewed",
         "mcp_url",
         "name",
         "npm_package",
@@ -658,6 +670,12 @@
           "default": "",
           "type": "string"
         },
+        "icon_url": {
+          "default": "",
+          "description": "The upstream image a deployment's icon proxy may fetch for this record: a Smithery server icon or a GitHub owner avatar, and nothing else. ``\"\"`` when no logo can be named. Consumers re-validate and proxy this URL server-side; it is never handed to a browser.",
+          "maxLength": 512,
+          "type": "string"
+        },
         "kind": {
           "const": "skill",
           "type": "string"
@@ -666,6 +684,10 @@
           "default": "",
           "maxLength": 64,
           "type": "string"
+        },
+        "marketplace_reviewed": {
+          "default": false,
+          "type": "boolean"
         },
         "model_invocable": {
           "default": true,
@@ -771,8 +793,10 @@
         "docs_url",
         "frontmatter_bytes",
         "homepage",
+        "icon_url",
         "kind",
         "license",
+        "marketplace_reviewed",
         "model_invocable",
         "name",
         "plugin",

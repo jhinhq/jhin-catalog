@@ -45,6 +45,14 @@ class SourceLimits(BaseModel):
     marketplace_allowlist: tuple[str, ...] = ()
     require_marketplace_allowlist: bool = False
 
+    # The subset of the allowlist a person marked ``trust: reviewed`` in
+    # ``curated/skills.yaml``, as lowercase ``owner/name``. A skill crawled
+    # from one of these carries ``marketplace_reviewed: true`` on its record,
+    # which is the only thing that can lift it above ``indexed`` on the
+    # consumer's side. Being allowlisted admits a repository to the crawl;
+    # being reviewed is a separate, stronger claim.
+    marketplace_reviewed: tuple[str, ...] = ()
+
 
 DEFAULT_LIMITS: Final[SourceLimits] = SourceLimits()
 

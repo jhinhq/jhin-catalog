@@ -1,4 +1,4 @@
-"""The Jhin ``CatalogApp`` projection: 15 keys, omit-when-default, and the caps."""
+"""The Jhin ``CatalogApp`` projection: 16 keys, omit-when-default, and the caps."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ CATALOG_APP_KEYS = frozenset(
         "name",
         "category",
         "icon",
+        "icon_url",
         "description",
         "connector_type",
         "mcp_url",
@@ -74,7 +75,7 @@ def _skill() -> SkillEntry:
     )
 
 
-# --- the fifteen keys ------------------------------------------------------
+# --- the sixteen keys ------------------------------------------------------
 
 
 def test_the_projection_emits_no_key_outside_the_catalog_app_shape() -> None:
@@ -114,6 +115,22 @@ def test_a_none_optional_is_omitted_rather_than_written_as_null() -> None:
 
 def test_connector_config_is_omitted_when_empty() -> None:
     assert "connector_config" not in project_catalog_app(_mcp(connector_config={}))
+
+
+def test_a_github_avatar_icon_url_is_projected() -> None:
+    projected = project_catalog_app(_mcp(icon_url="https://github.com/acme-example.png?size=128"))
+    assert projected["icon_url"] == "https://github.com/acme-example.png?size=128"
+
+
+def test_a_smithery_icon_url_is_not_projected() -> None:
+    """``CatalogApp`` on the consumer's side accepts only the avatar shape;
+    a Smithery icon route reaches a deployment through the synced entry."""
+    projected = project_catalog_app(_mcp(icon_url="https://api.smithery.ai/servers/exa/icon"))
+    assert "icon_url" not in projected
+
+
+def test_an_empty_icon_url_is_omitted_rather_than_written() -> None:
+    assert "icon_url" not in project_catalog_app(_mcp(icon_url=""))
 
 
 def test_connector_config_is_key_sorted_when_present() -> None:

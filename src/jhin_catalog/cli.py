@@ -508,6 +508,7 @@ def _limits(args: argparse.Namespace, root: Path) -> SourceLimits:
         requests_per_minute=DEFAULT_LIMITS.requests_per_minute,
         marketplace_allowlist=policy.allow,
         require_marketplace_allowlist=policy.require_allowlist,
+        marketplace_reviewed=policy.reviewed,
     )
 
 

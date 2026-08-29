@@ -266,6 +266,60 @@ def test_a_plain_http_endpoint_is_rejected_as_an_mcp_url() -> None:
         _minimal(mcp_url="http://mcp.example/mcp")
 
 
+# The icon proxy on the consumer's side dials whatever this field names, so
+# the accept set is exactly two URL shapes and the reject set is everything a
+# hostile publisher might try — host spoofs by suffix and by path most of all.
+ICON_URLS_ACCEPTED = (
+    "",
+    "https://api.smithery.ai/servers/exa/icon",
+    "https://api.smithery.ai/servers/@acme-example/notes/icon",
+    "https://github.com/anthropics.png?size=128",
+    "https://github.com/a.png?size=128",
+    "https://github.com/" + "a" * 39 + ".png?size=128",
+)
+
+ICON_URLS_REJECTED = (
+    "https://api.smithery.ai.evil.com/servers/exa/icon",  # host spoofed by suffix
+    "https://evil.example/api.smithery.ai/servers/exa/icon",  # host hidden in the path
+    "http://api.smithery.ai/servers/exa/icon",  # not https
+    "https://api.smithery.ai/servers//icon",  # empty path segment
+    "https://api.smithery.ai/servers/exa/icon?width=64",  # query smuggled in
+    "https://api.smithery.ai/servers/exa/icon#fragment",
+    "https://api.smithery.ai/icon",  # not the servers route
+    "https://github.com/anthropics.png?size=256",  # unpinned rendition
+    "https://github.com/anthropics.png",  # no size at all
+    "https://github.com/octo/cat.png?size=128",  # a repo path, not an owner
+    "https://github.com.evil.example/anthropics.png?size=128",  # host spoofed by suffix
+    "https://github.com/" + "a" * 40 + ".png?size=128",  # over GitHub's 39
+    "https://github.com/an_thropics.png?size=128",  # outside GitHub's grammar
+    "https://avatars.githubusercontent.com/u/1?v=4",  # the CDN, not the entry shape
+    "javascript:alert(1)",
+)
+
+
+@pytest.mark.parametrize("url", ICON_URLS_ACCEPTED)
+def test_a_well_shaped_icon_url_is_accepted(url: str) -> None:
+    assert _minimal(icon_url=url).icon_url == url
+
+
+@pytest.mark.parametrize("url", ICON_URLS_REJECTED)
+def test_anything_else_offered_as_an_icon_url_is_rejected(url: str) -> None:
+    with pytest.raises(ValidationError):
+        _minimal(icon_url=url)
+
+
+def test_an_icon_url_over_the_length_bound_is_rejected_even_when_well_shaped() -> None:
+    overlong = "https://api.smithery.ai/servers/" + "a" * 500 + "/icon"
+    with pytest.raises(ValidationError):
+        _minimal(icon_url=overlong)
+
+
+def test_marketplace_reviewed_defaults_to_false_and_round_trips() -> None:
+    assert _minimal().marketplace_reviewed is False
+    flagged = _minimal(marketplace_reviewed=True)
+    assert loads_line(dumps_line(flagged)).marketplace_reviewed is True
+
+
 def test_loads_line_rejects_a_line_that_is_not_json() -> None:
     with pytest.raises(CatalogError):
         loads_line("not json at all\n")

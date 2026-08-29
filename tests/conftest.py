@@ -119,6 +119,7 @@ def sample_mcp_entry() -> McpEntry:
         description="A server that carries one of everything, for the serialisation tests.",
         homepage="https://example.com/",
         docs_url="https://docs.example.com/mcp",
+        icon_url="https://api.smithery.ai/servers/example-org/example-mcp/icon",
         repo=RepoRef(
             host="github.com", owner="example-org", repo="example-mcp", subpath="servers/example"
         ),
@@ -202,6 +203,8 @@ def sample_skill_entry() -> SkillEntry:
         description="Reads a diff and reports on layout, hierarchy, and consistency.",
         homepage="https://example.com/skills",
         docs_url="https://github.com/example-org/example-pack",
+        icon_url="https://github.com/example-org.png?size=128",
+        marketplace_reviewed=True,
         repo=RepoRef(host="github.com", owner="example-org", repo="example-pack"),
         trust_tier="curated",
         popularity=0.5506,

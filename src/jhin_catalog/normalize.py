@@ -26,6 +26,8 @@ from jhin_catalog.types import (
     CONNECTOR_TYPES,
     DEFAULT_SKILL_CATEGORY,
     ENTRY_ADAPTER,
+    ICON_URL_GITHUB_RE,
+    ICON_URL_SMITHERY_RE,
     MAX_ALIAS_KEYS,
     MAX_DESCRIPTION_CHARS,
     MAX_NAME_CHARS,
@@ -640,6 +642,44 @@ def choose_icon(*, slug: str, category: str) -> str:
     return mapped
 
 
+def github_avatar_url(owner: str) -> str:
+    """The GitHub avatar URL for one repository owner, or ``""``.
+
+    Only the shape a consumer's icon proxy will actually dial: one to
+    thirty-nine characters of letters, digits, and hyphens — GitHub's own
+    username grammar. An owner outside it (a dotted GitLab group, say) yields
+    no URL rather than a URL nothing will ever fetch. Lowercased, like the
+    skill side's ``_owner_avatar_url``: GitHub resolves either spelling, and
+    two spellings of one URL would read as a change on every rebuild.
+    """
+    candidate = f"https://github.com/{owner.lower()}.png?size=128"
+    return candidate if ICON_URL_GITHUB_RE.fullmatch(candidate) is not None else ""
+
+
+def elect_icon_url(payload: JsonObject) -> str:
+    """The one upstream logo this record may be proxied from, or ``""``.
+
+    In order: a Smithery-sourced entry gets Smithery's own icon route, since
+    that serves the mark the server's publisher uploaded; anything with a
+    GitHub repository gets its owner's avatar; a registry- or npm-only record
+    gets nothing, because neither upstream serves an image this index would
+    let a proxy dial. A constructed URL that fails the shape check falls
+    through rather than failing the entry — a qualified name with a ``?`` in
+    it is upstream noise, not a reason to drop a server.
+    """
+    qualified = _text(payload.get("smithery_qualified_name"))
+    if qualified:
+        candidate = f"https://api.smithery.ai/servers/{qualified}/icon"
+        if len(candidate) <= MAX_URL_CHARS and ICON_URL_SMITHERY_RE.fullmatch(candidate):
+            return candidate
+    repo = _obj(payload.get("repo"))
+    if _text(repo.get("host")) == "github.com":
+        owner = _text(repo.get("owner"))
+        if owner:
+            return github_avatar_url(owner)
+    return ""
+
+
 # ---------------------------------------------------------------------------
 # Normalisation
 # ---------------------------------------------------------------------------
@@ -1020,6 +1060,8 @@ def normalize_marketplace_skill(record: RawRecord) -> Candidate | None:
             _MAX_FRONTMATTER_BYTES,
         ),
         "tags": _tags(_strings(_first_value(payload, "tags", "keywords"))),
+        "marketplace_reviewed": _truthy(payload.get("marketplace_reviewed")),
+        "icon_url": _skill_icon_url(payload, repo),
     }
     plugin = _plugin_ref(payload, plugin_obj, marketplace, marketplace_repo, plugin_name)
     if plugin is not None:
@@ -1086,6 +1128,12 @@ def build_entry(merged: MergedCandidate, *, popularity: float, slug: str) -> Cat
     else:
         category = _text(payload.get("category"))[:_MAX_SKILL_CATEGORY_CHARS]
         payload["category"] = category or DEFAULT_SKILL_CATEGORY
+        # A skill's icon is always its repository owner's avatar (rule 2 of
+        # the election); a merged value of that shape stands, and anything
+        # else is re-elected from the repository rather than trusted.
+        icon_url = _text(payload.get("icon_url"))
+        if ICON_URL_GITHUB_RE.fullmatch(icon_url) is None:
+            payload["icon_url"] = elect_icon_url(payload)
 
     try:
         return ENTRY_ADAPTER.validate_python(payload)
@@ -1121,6 +1169,11 @@ def _finish_mcp(payload: JsonObject, *, name: str, description: str, slug: str) 
 
     icon = _text(payload.get("icon"))
     payload["icon"] = icon if icon in CATALOG_ICONS else choose_icon(slug=slug, category=category)
+    # Recomputed rather than merged, like the other derived fields: the
+    # election is a pure function of the identity fields already on the
+    # payload, and a merge could otherwise carry a stale answer forward from
+    # a source that never saw the Smithery name another source published.
+    payload["icon_url"] = elect_icon_url(payload)
 
     connector_type = _text(payload.get("connector_type"))
     payload["connector_type"] = connector_type if connector_type in CONNECTOR_TYPES else None
@@ -1394,6 +1447,20 @@ def _tool_count(value: JsonValue) -> int | None:
 # ---------------------------------------------------------------------------
 # Private helpers: skills
 # ---------------------------------------------------------------------------
+
+
+def _skill_icon_url(payload: JsonObject, repo: RepoRef) -> str:
+    """A skill's icon URL: the crawl's value when it is well-shaped, else rule 2.
+
+    The crawl writes the repository owner's avatar onto the payload, and this
+    keeps it. The re-election covers a payload recorded before the crawl
+    learnt to — the field is derivable from the repository the skill already
+    proves, so an older recording loses nothing.
+    """
+    declared = _text(payload.get("icon_url"))
+    if ICON_URL_GITHUB_RE.fullmatch(declared) is not None:
+        return declared
+    return github_avatar_url(repo.owner) if repo.host == "github.com" else ""
 
 
 def _skill_repo(payload: JsonObject) -> RepoRef | None:

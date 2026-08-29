@@ -15,6 +15,7 @@ from jhin_catalog.build import (
     assign_slugs,
     load_curated,
     load_denylist,
+    load_marketplace_policy,
     plan_shards,
     read_lock,
     render_lock,
@@ -286,6 +287,74 @@ entries:
 
 def test_load_denylist_on_a_missing_file_yields_nothing(tmp_path: Path) -> None:
     assert load_denylist(tmp_path / "absent.yaml") == ()
+
+
+def test_a_trust_reviewed_row_lands_in_the_policys_reviewed_set(tmp_path: Path) -> None:
+    """Allowlisted admits a repository to the crawl; ``trust: reviewed`` is
+    the separate, stronger claim, and only rows that make it earn the flag."""
+    (tmp_path / "curated").mkdir()
+    _yaml(
+        tmp_path / "curated" / "skills.yaml",
+        """
+version: 1
+marketplaces:
+  allow:
+    - repo: Acme-Example/Community
+      maintainer: Acme
+      trust: reviewed
+      notes: Reviewed by a person against all four criteria.
+    - repo: stranger/plugins
+      maintainer: A stranger
+      notes: Allowlisted for the crawl, sample not yet read.
+  community: []
+  discovery:
+    require_allowlist: true
+entries: []
+""",
+    )
+    policy = load_marketplace_policy(tmp_path)
+    assert policy.allow == ("acme-example/community", "stranger/plugins")
+    assert policy.reviewed == ("acme-example/community",)
+    assert policy.require_allowlist is True
+
+
+def test_a_trust_spelling_that_is_not_reviewed_fails_the_build(tmp_path: Path) -> None:
+    """Any other value would be a tier nobody defined, read as one by nobody."""
+    (tmp_path / "curated").mkdir()
+    _yaml(
+        tmp_path / "curated" / "skills.yaml",
+        """
+version: 1
+marketplaces:
+  allow:
+    - repo: acme-example/community
+      maintainer: Acme
+      trust: verified
+      notes: A trust value this file has never defined.
+entries: []
+""",
+    )
+    with pytest.raises(CuratedError, match="trust"):
+        load_marketplace_policy(tmp_path)
+
+
+def test_a_row_without_trust_is_allowlisted_but_not_reviewed(tmp_path: Path) -> None:
+    (tmp_path / "curated").mkdir()
+    _yaml(
+        tmp_path / "curated" / "skills.yaml",
+        """
+version: 1
+marketplaces:
+  allow:
+    - repo: acme-example/community
+      maintainer: Acme
+      notes: Allowlisted; the review sample is still being read.
+entries: []
+""",
+    )
+    policy = load_marketplace_policy(tmp_path)
+    assert policy.allow == ("acme-example/community",)
+    assert policy.reviewed == ()
 
 
 # --- the lock file ---------------------------------------------------------
