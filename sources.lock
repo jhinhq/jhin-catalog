@@ -2,42 +2,42 @@
   "schema_version": 1,
   "sources": [
     {
-      "entry_count": 19946,
-      "fetched_at": "2026-08-29T10:51:37Z",
+      "entry_count": 20583,
+      "fetched_at": "2026-09-01T09:36:03Z",
       "page_count": 317,
-      "sha256": "a5ac032d547636937d412452456a23aedf7ac5e50836aebbc75dde238b25bcde",
+      "sha256": "1bdba98072ab5bd3f48232e472e398b6aa95d8dd506c1c115f4ad810ea89ed82",
       "source_id": "github_topics",
       "url": "https://api.github.com/search/repositories"
     },
     {
-      "entry_count": 3020,
-      "fetched_at": "2026-08-29T10:51:37Z",
-      "page_count": 3366,
-      "sha256": "edc5d97bd28995ad51ef6d8588b2ca1e1ef08c5a07adf68c8a9313839c4772d8",
+      "entry_count": 2939,
+      "fetched_at": "2026-09-01T09:36:03Z",
+      "page_count": 3275,
+      "sha256": "9e034822cb31e57fe9f31b5d7366668f0a586a5b758766198ad1f6d83a5ea0da",
       "source_id": "marketplaces",
       "url": "https://raw.githubusercontent.com/anthropics/claude-plugins-official/HEAD/.claude-plugin/marketplace.json"
     },
     {
-      "entry_count": 13832,
-      "fetched_at": "2026-08-29T10:51:37Z",
+      "entry_count": 13825,
+      "fetched_at": "2026-09-01T09:36:03Z",
       "page_count": 183,
-      "sha256": "47da567c920532a6b7d4b942b129c14701aaccc1f01dd18937f9d140e05ed8ec",
+      "sha256": "713b07a8affc9363d0a92b720737ec3efbfa7a650bd7468b5bdaac0eb82be63f",
       "source_id": "npm",
       "url": "https://registry.npmjs.org/-/v1/search"
     },
     {
-      "entry_count": 25542,
-      "fetched_at": "2026-08-29T10:51:37Z",
-      "page_count": 256,
-      "sha256": "f2f19dba27beb89b8407b73fdfa5d853e26ea76129295ad8a73aa3e23d405130",
+      "entry_count": 26120,
+      "fetched_at": "2026-09-01T09:36:03Z",
+      "page_count": 262,
+      "sha256": "ba84a8a74324bc4aab010ccf05342c3ed9b9e08168223bfe3f40150ac5b0d5e6",
       "source_id": "registry",
       "url": "https://registry.modelcontextprotocol.io/v0.1/servers"
     },
     {
-      "entry_count": 10997,
-      "fetched_at": "2026-08-29T10:51:37Z",
-      "page_count": 611,
-      "sha256": "7b791a180539536c43fa9ef460647a5d64e5fbaa36df5e5857f5cb5c5c0eec3e",
+      "entry_count": 11234,
+      "fetched_at": "2026-09-01T09:36:03Z",
+      "page_count": 613,
+      "sha256": "657f4cd61f330c46111d5fc1bf8e0e9d5383950cadcd9cdea6fb9c90cd359679",
       "source_id": "smithery",
       "url": "https://registry.smithery.ai/servers"
     }
